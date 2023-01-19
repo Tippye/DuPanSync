@@ -220,7 +220,8 @@ def makeNewSync(du_util: DuUtil):
             "from_uk": group_data['from_uk'],
             "msg_id": group_data['msg_id'],
             "fs_ids": group_data['fs_ids'],
-            "path": save_path
+            "path": save_path,
+            "sync_name": group_data['sync_dir']
         })
         if setSyncData(sync_data):
             print("已将目录 {} 设置自动同步".format(group_data['sync_dir']))
