@@ -8,3 +8,5 @@
 /dataSources.local.xml
 /.idea/
 /venv/
+/temp/cookie.json
+/temp/sync.json
