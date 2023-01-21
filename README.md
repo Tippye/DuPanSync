@@ -12,12 +12,10 @@
 
 1. 把本项目拉到本地
 2. 安装相关库
-   - 
    ```shell
     pip install -r requirements.txt
     ```
 3. 运行`main.py`
-   -
    ```shell
    # 有些人可能是python3 main.py
    python main.py
@@ -28,6 +26,7 @@
    - `config.json`里的`qrCodeImagePath`可以改默认保存地址
 
 # TODO
-- 自动同步（现在只能设置同步的目录，设置时会自动保存一次）
-- 新文件同步提醒
-- iOS快捷指令（或许会做）
+- [x] 同步（现在只能设置同步的目录，设置时会自动保存一次）
+- [ ] 定时任务自动执行
+- [ ] 新文件同步提醒
+- [ ] iOS快捷指令（或许会做）

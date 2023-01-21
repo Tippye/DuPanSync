@@ -1,6 +1,7 @@
 import requests as requests
 
 from DuUtil import DuUtil
+from sync import syncAllDir
 from syncSetter import makeNewSync
 
 
@@ -15,7 +16,7 @@ def main():
             makeNewSync(dupan)
             ipt1 = ''
         elif ipt1 == '2':
-            print('敬请期待')
+            syncAllDir(dupan)
             ipt1 = ''
         else:
             ipt1 = ''
@@ -24,7 +25,6 @@ def main():
 if __name__ == '__main__':
     try:
         dupan = DuUtil()
-        # main()
         main()
     except requests.exceptions.ConnectionError:
         print("网络连接错误")

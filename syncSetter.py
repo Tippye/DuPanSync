@@ -139,7 +139,7 @@ def selectGroupDir(du_util: DuUtil):
             path_ipt_int = int(path_ipt)
             if path_ipt_int > (len(path_list) + 1):
                 raise IndexError
-        except BaseException as e:
+        except ValueError as e:
             print("请输入合法字符")
             path_ipt = None
         else:
@@ -190,7 +190,7 @@ def selectPanDir(du_util: DuUtil):
             ipt_num_int = int(ipt_num)
             if ipt_num_int > (len(file_list) + 1):
                 raise IndexError
-        except BaseException as e:
+        except ValueError as e:
             print("请输入合法字符")
             ipt_num = None
         else:
@@ -220,8 +220,8 @@ def makeNewSync(du_util: DuUtil):
             "from_uk": group_data['from_uk'],
             "msg_id": group_data['msg_id'],
             "fs_ids": group_data['fs_ids'],
-            "path": save_path,
-            "sync_name": group_data['sync_dir']
+            "path": "{0}/{1}".format(save_path,group_data['sync_dir'].split('/')[-1]),
+            "sync_dir": group_data['sync_dir']
         })
         if setSyncData(sync_data):
             print("已将目录 {} 设置自动同步".format(group_data['sync_dir']))

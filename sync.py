@@ -1,13 +1,65 @@
-import json
-import urllib
-
-import requests
-
-def syncDir(sync_data, header, logid, bdstoken):
-    # TODO: 遍历查询未保存文件然后同步
-    pass
+from DuUtil import DuUtil
+from syncSetter import getSyncData
 
 
-def syncAllDir():
-    # TODO：同步所有文件夹
-    pass
+def getSyncDir(sync_data, du_util: DuUtil, page=1, update_list=None):
+    if update_list is None:
+        update_list = []
+    wait_list = []
+    group_dir_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
+                                         sync_data['gid'], page, 50)
+    sp = sync_data['path'].split('/')
+    sp.pop(len(sp) - 1)
+    # save_path = '/'.join(tuple(sp))
+    save_path = sync_data['path']
+    file_list = du_util.getFileList(save_path, page=page, num=50)
+
+    for i in range(0, len(group_dir_list)):
+        existed = False
+        for j in range(0, len(file_list)):
+            if group_dir_list[i]['server_filename'] == file_list[j]['server_filename']:
+                existed = True
+                break
+        if not existed:
+            group_dir_list[i]['save_path'] = sync_data['path']
+            update_list.append(group_dir_list[i])
+        elif group_dir_list[i]['isdir'] == 1:
+            wait_list.append(group_dir_list[i])
+
+    if len(group_dir_list) >= 50:
+        update_list = getSyncDir(sync_data, du_util, page + 1, update_list)
+
+    for w in wait_list:
+        update_list += getSyncDir({
+            "gid": sync_data['gid'],
+            "from_uk": sync_data['from_uk'],
+            "msg_id": sync_data['msg_id'],
+            "fs_ids": [w['fs_id']],
+            "path": "{0}/{1}".format(save_path, w['server_filename'])
+        }, du_util)
+
+    return update_list
+
+
+def syncDir(sync_data, du_util: DuUtil):
+    update_list = getSyncDir(sync_data, du_util)
+    print("共发现{}个待更新文件/文件夹".format(len(update_list)))
+    num = 0
+    for item in update_list:
+        if du_util.saveDir(sync_data['from_uk'], sync_data['msg_id'], item['save_path'], item['fs_id'],
+                           sync_data['gid']):
+            print("{} 自动同步完成".format(item['save_path'] + '/' + item['server_filename']))
+            num += 1
+        else:
+            print("{} 保存失败".format(item['path']))
+
+    print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], num))
+
+
+def syncAllDir(du_util: DuUtil):
+    sd = getSyncData()
+    if sd == False:
+        print("读取同步文件失败，请检查/temp/sync.json是否存在")
+        return False
+    for d in sd:
+        syncDir(d, du_util)
