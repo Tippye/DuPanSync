@@ -7,6 +7,11 @@ SyncPath = "./temp/sync.json"
 
 
 def getSyncData():
+    """
+    读取自动同步列表文件
+
+    :return:
+    """
     try:
         with open(SyncPath, 'r') as f:
             return json.load(f)
@@ -20,6 +25,12 @@ def getSyncData():
 
 
 def setSyncData(data):
+    """
+    设置自动同步文件
+
+    :param data:覆盖原文件的内容
+    :return:
+    """
     try:
         with open(SyncPath, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -156,6 +167,12 @@ def selectGroupDir(du_util: DuUtil):
 
 
 def selectPanDir(du_util: DuUtil):
+    """
+    让用户选择网盘目录
+
+    :param du_util:
+    :return:
+    """
     path = "/"
     ipt_num = None
     page = 1
@@ -201,6 +218,12 @@ def selectPanDir(du_util: DuUtil):
 
 
 def makeNewSync(du_util: DuUtil):
+    """
+    设置一个新的同步目录
+
+    :param du_util:
+    :return:
+    """
     sync_data = getSyncData()
     # 这里不能用assert或者not sync_data，不然数组为空时也会报错
     if sync_data == False:
@@ -220,7 +243,7 @@ def makeNewSync(du_util: DuUtil):
             "from_uk": group_data['from_uk'],
             "msg_id": group_data['msg_id'],
             "fs_ids": group_data['fs_ids'],
-            "path": "{0}/{1}".format(save_path,group_data['sync_dir'].split('/')[-1]),
+            "path": "{0}/{1}".format(save_path, group_data['sync_dir'].split('/')[-1]),
             "sync_dir": group_data['sync_dir']
         })
         if setSyncData(sync_data):
@@ -232,3 +255,51 @@ def makeNewSync(du_util: DuUtil):
             print("==============================end==============================")
     else:
         print("目录 {} 保存失败，请重试".format(group_data['sync_dir']))
+
+
+def delSyncData(d):
+    """
+    删除设置的自动同步
+
+    :param d: 自动同步的对象，只用gid和fs_ids判断
+    :return:
+    """
+    datas = getSyncData()
+    def filter_fun(s): return s if s['gid'] != d['gid'] and s['fs_ids'][0] != d['fs_ids'][0] else None
+
+    result = list(filter(filter_fun, datas))
+
+    setSyncData(result)
+
+
+def printSyncList():
+    """
+    打印所有同步列表
+
+    :return:
+    """
+    data = getSyncData()
+    print('[0] 退出')
+    print('\t\t群文件路径\t保存路径\t\t(输入对应数字进行操作)')
+    for i in range(1, len(data) + 1):
+        print('[{0}]\t{1}\t{2}'.format(i, data[i - 1]['sync_dir'], data[i - 1]['path']))
+
+    ipt1 = ''
+    while ipt1 != '0':
+        ipt1 = input()
+        try:
+            ipt_int = int(ipt1)
+            if ipt_int > (len(data) + 1) or ipt_int < 1:
+                raise IndexError
+        except (ValueError, IndexError):
+            print('请输入合法字符')
+        else:
+            print('[0] 取消\n[1] 删除')
+            ipt2 = input()
+            if ipt2 == '0':
+                ipt1 = '0'
+                printSyncList()
+            elif ipt2 == '1':
+                delSyncData(data[ipt_int - 1])
+                ipt1 = '0'
+                printSyncList()
