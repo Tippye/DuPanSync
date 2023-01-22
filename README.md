@@ -11,19 +11,26 @@
 ## 使用方法
 
 1. 把本项目拉到本地
-2. 安装相关库
+2. 安装对应版本的chromedriver
+   - 本项目使用的是macOS版Chrome 109.0.5414.87适配的chromedriver
+3. 安装相关库
    ```shell
     pip install -r requirements.txt
     ```
-3. 运行`main.py`
+4. 运行`main.py`
    ```shell
    # 有些人可能是python3 main.py
    python main.py
     ```
-4. 根据命令行中的提示进行选择（主要懒得再做个页面）
-5. 第一次登录时如果扫不了控制台的二维码就去扫保存到本地的二维码图片
+5. 根据命令行中的提示进行选择（主要懒得再做个页面）
+6. 第一次登录时如果扫不了控制台的二维码就去扫保存到本地的二维码图片
    - 默认地址在`/temp/login.png`
    - `config.json`里的`qrCodeImagePath`可以改默认保存地址
+7. 设置好后可以使用下面的命令直接执行同步方法，不显示操作菜单
+   ```shell
+   python -c "from main import shellSync;shellSync()"
+   ```
+   - 使用此命令可以方便的设置crontab，iOS快捷指令的SSH模块等方式进行操作
 
 # TODO
 - [x] 同步（现在只能设置同步的目录，设置时会自动保存一次）
