@@ -28,6 +28,7 @@ def shellSync():
 
     :return:
     """
+    dupan = None
     try:
         dupan = DuUtil()
         syncAllDir(dupan)
@@ -39,6 +40,7 @@ def shellSync():
 
 
 if __name__ == '__main__':
+    dupan = None
     try:
         dupan = DuUtil()
         main()

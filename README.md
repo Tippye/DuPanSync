@@ -17,16 +17,19 @@
    ```shell
     pip install -r requirements.txt
     ```
-4. 运行`main.py`
+4. 设置通知
+   - 修改位置为[config.json](./config.json)
+   - 邮箱密码是在对应邮箱设置里申请的授权码
+5. 运行`main.py`
    ```shell
    # 有些人可能是python3 main.py
    python main.py
     ```
-5. 根据命令行中的提示进行选择（主要懒得再做个页面）
-6. 第一次登录时如果扫不了控制台的二维码就去扫保存到本地的二维码图片
+6. 根据命令行中的提示进行选择（主要懒得再做个页面）
+7. 第一次登录时如果扫不了控制台的二维码就去扫保存到本地的二维码图片
    - 默认地址在`/temp/login.png`
    - `config.json`里的`qrCodeImagePath`可以改默认保存地址
-7. 设置好后可以使用下面的命令直接执行同步方法，不显示操作菜单
+8. 设置好后可以使用下面的命令直接执行同步方法，不显示操作菜单
    ```shell
    python -c "from main import shellSync;shellSync()"
    ```
@@ -35,5 +38,5 @@
 # TODO
 - [x] 同步（现在只能设置同步的目录，设置时会自动保存一次）
 - [ ] 定时任务自动执行
-- [ ] 新文件同步提醒
+- [x] 新文件同步提醒
 - [ ] iOS快捷指令（或许会做）

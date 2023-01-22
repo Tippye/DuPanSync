@@ -1,4 +1,14 @@
 {
   "showWebDriver": false,
-  "qrCodeImagePath": "./temp/login.png"
+  "qrCodeImagePath": "./temp/login.png",
+  "notice": {
+    "email": {
+      "enable": true,
+      "smtp_address": "smtp.qq.com",
+      "smtp_port": 465,
+      "send_email": "xxxxqq.com",
+      "send_pwd": "xxxxxxxxxx",
+      "receive_email": "xxxxx@qq.com"
+    }
+  }
 }

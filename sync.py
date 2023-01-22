@@ -1,5 +1,6 @@
 from DuUtil import DuUtil
 from syncSetter import getSyncData
+from util import Notices
 
 
 def getSyncDir(sync_data, du_util: DuUtil, page=1, update_list=None):
@@ -44,16 +45,16 @@ def getSyncDir(sync_data, du_util: DuUtil, page=1, update_list=None):
 def syncDir(sync_data, du_util: DuUtil):
     update_list = getSyncDir(sync_data, du_util)
     print("共发现{}个待更新文件/文件夹".format(len(update_list)))
-    num = 0
+    notices = Notices()
     for item in update_list:
         if du_util.saveDir(sync_data['from_uk'], sync_data['msg_id'], item['save_path'], item['fs_id'],
                            sync_data['gid']):
-            print("{} 自动同步完成".format(item['save_path'] + '/' + item['server_filename']))
-            num += 1
+            notices.addSuccess(item)
         else:
-            print("{} 保存失败".format(item['path']))
+            notices.addFail(item)
 
-    print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], num))
+    print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], notices.success_num))
+    notices.send()
 
 
 def syncAllDir(du_util: DuUtil):
