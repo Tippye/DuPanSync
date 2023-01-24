@@ -25,10 +25,12 @@ class DuUtil:
 
     def __init__(self):
         logger.info("初始化DuUtil...")
+        print("\n正在初始化...")
         self._config = getConfig()
         self._setDriver()
         self._setHeader()
         logger.info("DuUtil初始化成功")
+        print("初始化成功")
 
     def _setDriver(self):
         """
@@ -51,6 +53,7 @@ class DuUtil:
                 self._getCookie()
             except AssertionError:
                 logger.warning("登录失败，重试次数过多")
+                print("登录失败，重试次数过多")
         else:
             WebDriverWait(self._driver, 5, 0.5).until(expected_conditions.presence_of_element_located(
                 (By.CSS_SELECTOR, ".u-button.bd-login-button__wrapper.u-button--primary")))
@@ -59,6 +62,7 @@ class DuUtil:
 
             self._driver.get("https://pan.baidu.com")
             logger.info("自动登录成功")
+            print("自动登录成功")
             # TODO: token失效时的处理，目前还未测试出token失效时间，待补充
         finally:
             if f:
@@ -66,7 +70,7 @@ class DuUtil:
             if self._cookie is not None:
                 source = self._driver.page_source
                 self._bdstoken = re.findall(r'bdstoken":"(.*?)"', source)[0]
-                logger.info("bdstoken获取成功：{}".format(self._bdstoken))
+                logger.debug("bdstoken获取成功：{}".format(self._bdstoken))
 
     def _getCookie(self):
         """
@@ -137,7 +141,7 @@ class DuUtil:
         for c in self._cookie:
             self._header["Cookie"] += (c["name"] + "=" + c["value"] + ";")
 
-        logger.info("请求头Cookie: {}".format(self._header['Cookie']))
+        logger.debug("请求头Cookie: {}".format(self._header['Cookie']))
 
     def getFileList(self, path="/", isdir=False, page=1, num=100, order="time"):
         """
@@ -277,7 +281,7 @@ class DuUtil:
                   + 'fs_ids=%5B' + str(fs_id) + '%5D&type=2&' \
                   + 'gid=' + str(gid)
 
-        logger.info("logid: {}".format(logid))
+        logger.debug("logid: {}".format(logid))
         transfer_res = json.loads(requests.post(
             "https://pan.baidu.com/mbox/msg/transfer?channel=chunlei&clienttype=0&web=1&app_id=250528&logId=" + logid + "&bdstoken=" + self._bdstoken + "&clienttype=0&app_id=250528&web=1",
             headers=self._header,
@@ -285,8 +289,10 @@ class DuUtil:
         res = transfer_res['errno'] == 0
         if res:
             logger.info("保存文件成功: 文件已保存到 {}".format(path))
+            print("保存成功")
         else:
             logger.warning("文件保存失败：{}".format(transfer_res))
+            print("保存失败")
         return res
 
     def close(self):

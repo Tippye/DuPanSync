@@ -53,7 +53,8 @@ def selectGroupDir(du_util: DuUtil):
         "gid",
         "from_uk",
         "msg_id",
-        "fs_ids"
+        "fs_ids",
+        "group_name"
     }
     """
     group_page = 1
@@ -139,7 +140,7 @@ def selectGroupDir(du_util: DuUtil):
         path_ipt = input()
 
         if path_ipt == '0':
-            return False
+            return selectGroupDir(du_util)
         if path_ipt == '1':
             continue
         if path_ipt == '>':
@@ -164,7 +165,8 @@ def selectGroupDir(du_util: DuUtil):
         "from_uk": group['uk'],
         "msg_id": root_dir['msg_id'],
         "fs_ids": [select_dir['fs_id']],
-        "sync_dir": select_dir['path']
+        "sync_dir": select_dir['path'],
+        "group_name": group['name']
     }
 
 
@@ -186,8 +188,8 @@ def selectPanDir(du_util: DuUtil):
             try:
                 print("\t[{0}] 跳转到 {1}".format(i + 1, file_list[i - 1]['path'].split('/')[-1]))
             except BaseException as e:
+                logger.error("显示网盘目录错误：{}".format(e))
                 print("显示网盘目录错误")
-                print(e)
         if page > 1:
             print("\t[<] 上一页\t\t当前第{}页".format(page))
         if len(file_list) == num:
@@ -230,12 +232,14 @@ def makeNewSync(du_util: DuUtil):
     # 这里不能用assert或者not sync_data，不然数组为空时也会报错
     if sync_data == False:
         logger.warning("获取同步数据文件错误，请检查/temp/sync.json是否存在")
+        print("获取同步数据文件错误，请检查/temp/sync.json是否存在")
         return False
     group_data = selectGroupDir(du_util)
     assert group_data
     for d in sync_data:
         if d['gid'] == group_data['gid'] and d['fs_ids'][0] == group_data['fs_ids'][0]:
             logger.info("当前目录已设置自动同步")
+            print("当前目录已设置自动同步")
             return False
     save_path = selectPanDir(du_util)
     assert save_path
@@ -251,11 +255,14 @@ def makeNewSync(du_util: DuUtil):
         })
         if setSyncData(sync_data):
             logger.info("已将目录 {} 设置自动同步".format(group_data['sync_dir']))
+            print("已将目录 {} 设置自动同步".format(group_data['sync_dir']))
         else:
             logger.warning("目录 {} 已设置同步，但同步文件未写入成功".format(group_data['sync_dir']))
+            print("目录 {} 已设置同步，但同步文件未写入成功".format(group_data['sync_dir']))
             logger.info(json.dumps(sync_data))
     else:
         logger.warning("目录 {} 保存失败，请重试".format(group_data['sync_dir']))
+        print("目录 {} 保存失败，请重试".format(group_data['sync_dir']))
 
 
 def delSyncData(d):

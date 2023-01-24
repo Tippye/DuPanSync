@@ -57,6 +57,7 @@ def syncDir(sync_data, du_util: DuUtil):
             notices.addFail(item)
 
     logger.info("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], notices.success_num))
+    print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], notices.success_num))
     notices.send()
 
 
@@ -64,6 +65,7 @@ def syncAllDir(du_util: DuUtil):
     sd = getSyncData()
     if sd == False:
         logger.warning("读取同步文件失败，请检查/temp/sync.json是否存在")
+        print("读取同步文件失败，请检查/temp/sync.json是否存在")
         return False
     for d in sd:
         syncDir(d, du_util)

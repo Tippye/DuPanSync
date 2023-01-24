@@ -29,7 +29,8 @@ def shellSync():
 
     :return:
     """
-    logger.add('./logs/runlog_{time}.log', rotation="50 MB", encoding='utf-8', retention="3 days")
+    logger.add('./logs/runlog_{time}.log', rotation="50 MB", encoding='utf-8', retention="3 days",
+               level="INFO")
     logger.info("开始执行同步程序")
 
     dp = None
@@ -44,6 +45,7 @@ def shellSync():
 
 
 if __name__ == '__main__':
+    logger.remove()
     logger.add('./logs/runlog_{time}.log', rotation="50 MB", encoding='utf-8', retention="3 days")
     logger.info("开始执行主程序")
 
@@ -53,6 +55,7 @@ if __name__ == '__main__':
         main(dupan)
     except requests.exceptions.ConnectionError as e:
         logger.error("网络连接错误：{}".format(e))
+        print("网络连接错误")
     except AssertionError as e:
         logger.warning("程序中断：{}".format(e))
     finally:
