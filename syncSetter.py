@@ -261,12 +261,12 @@ def delSyncData(d):
     """
     删除设置的自动同步
 
-    :param d: 自动同步的对象，只用gid和fs_ids判断
+    :param d: 自动同步的对象，只用path和sync_dir判断
     :return:
     """
     datas = getSyncData()
 
-    def filter_fun(s): return s if s['gid'] != d['gid'] and s['fs_ids'][0] != d['fs_ids'][0] else None
+    def filter_fun(s): return s if (s['path'] != d['path'] and s['sync_dir'] != d['sync_dir']) else None
 
     result = list(filter(filter_fun, datas))
 
