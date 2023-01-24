@@ -83,7 +83,7 @@ def selectGroupDir(du_util: DuUtil):
             group_ipt_int = int(group_ipt)
             if group_ipt_int > (len(groups) + 1):
                 raise IndexError
-        except:
+        except (ValueError,IndexError):
             print("请输入合法字符")
         else:
             group = groups[group_ipt_int - 1]
@@ -106,7 +106,7 @@ def selectGroupDir(du_util: DuUtil):
             root_ipt_int = int(root_ipt)
             if root_ipt_int > len(root_list):
                 raise IndexError
-        except BaseException as e:
+        except (ValueError,IndexError) as e:
             print("请输入合法字符")
             root_ipt = None
         else:
@@ -150,7 +150,7 @@ def selectGroupDir(du_util: DuUtil):
             path_ipt_int = int(path_ipt)
             if path_ipt_int > (len(path_list) + 1):
                 raise IndexError
-        except ValueError as e:
+        except (ValueError, IndexError) as e:
             print("请输入合法字符")
             path_ipt = None
         else:
@@ -207,7 +207,7 @@ def selectPanDir(du_util: DuUtil):
             ipt_num_int = int(ipt_num)
             if ipt_num_int > (len(file_list) + 1):
                 raise IndexError
-        except ValueError as e:
+        except (ValueError, IndexError) as e:
             print("请输入合法字符")
             ipt_num = None
         else:
@@ -231,7 +231,7 @@ def makeNewSync(du_util: DuUtil):
     group_data = selectGroupDir(du_util)
     assert group_data
     for d in sync_data:
-        if d['gid'] == group_data['gid']:
+        if d['gid'] == group_data['gid'] and d['fs_ids'][0] == group_data['fs_ids'][0]:
             print("当前目录已设置自动同步")
             return False
     save_path = selectPanDir(du_util)
@@ -265,6 +265,7 @@ def delSyncData(d):
     :return:
     """
     datas = getSyncData()
+
     def filter_fun(s): return s if s['gid'] != d['gid'] and s['fs_ids'][0] != d['fs_ids'][0] else None
 
     result = list(filter(filter_fun, datas))
