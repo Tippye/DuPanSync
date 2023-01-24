@@ -104,8 +104,34 @@
    ```shell
    sudo chmod -R 777 ./du-pan-sync
    ```
+   
+## 设置定时执行
+
+### Linux/macOS
+
+1. 部署好项目确保可以运行
+2. 编辑`crontab`定时任务列表
+   ```shell
+   crontab -e
+   ```
+3. 在文件最下面添加一行
+   ```shell
+   # min hour day mon year command
+   10    8-22  *   *   *   cd /home/pi/du-pan-sync && python -c "from main import shellSync;shellSync()"
+   ```
+   - ![crontab](./temp/crontab.png)
+   - 这个定时会在 8:10,9:10,10:10···22:10 执行，可以根据自己的需求更改
+4. 关闭`crontab`
+   - 按`Ctrl`+`X`
+   - 根据提示按`Y`和回车键
+5. 可以通过`logs`文件夹下的log文件判断有没有执行
+
+### Windows
+
+百度[定时任务使用方法](https://blog.csdn.net/weixin_46279624/article/details/127221744)
+
 # TODO
 - [x] 同步（现在只能设置同步的目录，设置时会自动保存一次）
-- [ ] 定时任务自动执行
+- [x] 定时任务自动执行
 - [x] 新文件同步提醒
 - [ ] iOS快捷指令（或许会做）
