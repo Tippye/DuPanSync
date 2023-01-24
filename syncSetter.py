@@ -1,6 +1,8 @@
 import json
 import urllib
 
+from loguru import logger
+
 from DuUtil import DuUtil
 
 SyncPath = "./temp/sync.json"
@@ -227,12 +229,13 @@ def makeNewSync(du_util: DuUtil):
     sync_data = getSyncData()
     # 这里不能用assert或者not sync_data，不然数组为空时也会报错
     if sync_data == False:
+        logger.warning("获取同步数据文件错误，请检查/temp/sync.json是否存在")
         return False
     group_data = selectGroupDir(du_util)
     assert group_data
     for d in sync_data:
         if d['gid'] == group_data['gid'] and d['fs_ids'][0] == group_data['fs_ids'][0]:
-            print("当前目录已设置自动同步")
+            logger.info("当前目录已设置自动同步")
             return False
     save_path = selectPanDir(du_util)
     assert save_path
@@ -247,14 +250,12 @@ def makeNewSync(du_util: DuUtil):
             "sync_dir": group_data['sync_dir']
         })
         if setSyncData(sync_data):
-            print("已将目录 {} 设置自动同步".format(group_data['sync_dir']))
+            logger.info("已将目录 {} 设置自动同步".format(group_data['sync_dir']))
         else:
-            print("目录 {} 已经同步，但同步文件未写入成功，请将以下内容放入/temp/sync.json")
-            print("===========================sync.json===========================")
-            print(json.dumps(sync_data))
-            print("==============================end==============================")
+            logger.warning("目录 {} 已设置同步，但同步文件未写入成功".format(group_data['sync_dir']))
+            logger.info(json.dumps(sync_data))
     else:
-        print("目录 {} 保存失败，请重试".format(group_data['sync_dir']))
+        logger.warning("目录 {} 保存失败，请重试".format(group_data['sync_dir']))
 
 
 def delSyncData(d):
@@ -269,7 +270,7 @@ def delSyncData(d):
     def filter_fun(s): return s if (s['path'] != d['path'] and s['sync_dir'] != d['sync_dir']) else None
 
     result = list(filter(filter_fun, datas))
-
+    logger.info('删除自动同步项：{}'.format(d['sync_dir']))
     setSyncData(result)
 
 

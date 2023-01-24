@@ -6,6 +6,8 @@ import requests as requests
 import smtplib
 from email.mime.text import MIMEText
 
+from loguru import logger
+
 
 def email_push(send_email, send_pwd, receive_email, title, text,
                text_type="html", smtp_address="smtp.qq.com", smtp_port=465):
@@ -235,8 +237,10 @@ def zxingParseQRCode(filePath):
     if os.path.isfile(filePath):
         barcode = reader.decode(filePath)
     else:
-        with open(getConfig()['qrCodeImagePath'], "wb") as f:
+        save_path = getConfig()['qrCodeImagePath']
+        with open(save_path, "wb") as f:
             f.write(requests.get(url=filePath).content)
+            logger.info("二维码图片已保存到 {}".format(save_path))
         barcode = reader.decode("./temp/login.png")
 
     return barcode.parsed

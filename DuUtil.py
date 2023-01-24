@@ -11,6 +11,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException
 import qrcode_terminal
+from loguru import logger
 
 from util import zxingParseQRCode, getConfig
 
@@ -23,11 +24,11 @@ class DuUtil:
     _bdstoken = None
 
     def __init__(self):
-        print("\n正在初始化DuUtil...")
+        logger.info("初始化DuUtil...")
         self._config = getConfig()
         self._setDriver()
         self._setHeader()
-        print("初始化完成")
+        logger.info("DuUtil初始化成功")
 
     def _setDriver(self):
         """
@@ -38,6 +39,7 @@ class DuUtil:
         """
         driver_options = ChromeOptions()
         if not self._config['showWebDriver']:
+            logger.info("已配置不显示浏览器")
             driver_options.add_argument("--headless")
         self._driver = Chrome("chromedriver", chrome_options=driver_options)
         self._driver.get("https://pan.baidu.com")
@@ -45,7 +47,10 @@ class DuUtil:
             with open("./temp/cookie.json", "r", encoding="utf8") as f:
                 self._cookie = json.load(f)
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-            self._getCookie()
+            try:
+                self._getCookie()
+            except AssertionError:
+                logger.warning("登录失败，重试次数过多")
         else:
             WebDriverWait(self._driver, 5, 0.5).until(expected_conditions.presence_of_element_located(
                 (By.CSS_SELECTOR, ".u-button.bd-login-button__wrapper.u-button--primary")))
@@ -53,18 +58,22 @@ class DuUtil:
                 self._driver.add_cookie(c)
 
             self._driver.get("https://pan.baidu.com")
+            logger.info("自动登录成功")
             # TODO: token失效时的处理，目前还未测试出token失效时间，待补充
         finally:
             if f:
                 f.close()
-            source = self._driver.page_source
-            self._bdstoken = re.findall(r'bdstoken":"(.*?)"', source)[0]
+            if self._cookie is not None:
+                source = self._driver.page_source
+                self._bdstoken = re.findall(r'bdstoken":"(.*?)"', source)[0]
+                logger.info("bdstoken获取成功：{}".format(self._bdstoken))
 
     def _getCookie(self):
         """
         获取cookie
         :return:
         """
+        logger.info("开始使用浏览器登录")
         # 等待未登录时的登录按钮加载出来
         WebDriverWait(self._driver, 5, 0.5).until(expected_conditions.presence_of_element_located(
             (By.CSS_SELECTOR, ".u-button.bd-login-button__wrapper.u-button--primary")))
@@ -72,23 +81,27 @@ class DuUtil:
         btn_qudenglu = self._driver.find_element(By.CSS_SELECTOR,
                                                  ".u-button.bd-login-button__wrapper.u-button--primary")
         btn_qudenglu.click()
+        logger.debug("点击 .u-button.bd-login-button__wrapper.u-button--primary 标签")
         # 等待"扫码登录"按钮出现并点击
         WebDriverWait(self._driver, 5, 0.5).until(
             expected_conditions.presence_of_element_located((By.ID, "TANGRAM__PSP_11__changeQrCodeItem")))
         btn_saomadenglu = self._driver.find_element(By.ID, "TANGRAM__PSP_11__changeQrCodeItem")
         btn_saomadenglu.click()
+        logger.debug("点击 #TANGRAM__PSP_11__changeQrCodeItem 按钮")
         # 等待登录二维码出现
         WebDriverWait(self._driver, 5, 0.5).until(
             expected_conditions.presence_of_element_located((By.CLASS_NAME, "tang-pass-qrcode-img")))
         # TODO：等待两秒让他加载出来二维码，此处可以优化判断链接是否是加载中
         sleep(2)
+        login_qrcode_url = self._driver.find_element(By.CLASS_NAME, "tang-pass-qrcode-img")
+        logger.debug("获取登录二维码，二维码链接: {}".format(login_qrcode_url))
         print("请扫描二维码登录，如果无法扫描请扫描程序目录下" + self._config['qrCodeImagePath'])
         print("登录成功后请按下回车键")
-        login_qrcode_url = self._driver.find_element(By.CLASS_NAME, "tang-pass-qrcode-img")
         # 在控制台打印二维码，同时保存图片到本地
         qrcode_terminal.draw(zxingParseQRCode(login_qrcode_url.get_attribute("src")))
         terminal_input = None
-        while terminal_input is None:
+        relogin = 1
+        while terminal_input is None and relogin < 6:
             terminal_input = input()
             # 尝试查找用户名的标签，如果找到就继续执行，否则重新按下键盘
             try:
@@ -96,12 +109,15 @@ class DuUtil:
                                           ".wp-s-header-user__body-username.inline-block-v-middle.text-ellip")
             except NoSuchElementException:
                 terminal_input = None
+                relogin += 1
+                logger.warning("登录未成功，请重新按下回车键，失败次数：{}".format(relogin))
                 print("登录未成功，请重新按下回车键")
-
-        print("登录成功")
+        assert relogin < 6
         ck = self._driver.get_cookies()
 
         self._cookie = ck
+
+        logger.info("登录成功，cookie存储在 ./temp/cookie.json")
         self._driver.get("https://pan.baidu.com")
         with open("./temp/cookie.json", "w") as f:
             json.dump(ck, f, ensure_ascii=False, indent=2)
@@ -120,6 +136,8 @@ class DuUtil:
         }
         for c in self._cookie:
             self._header["Cookie"] += (c["name"] + "=" + c["value"] + ";")
+
+        logger.info("请求头Cookie: {}".format(self._header['Cookie']))
 
     def getFileList(self, path="/", isdir=False, page=1, num=100, order="time"):
         """
@@ -178,13 +196,14 @@ class DuUtil:
                     "group_remark": ""
                 }]
         """
-        groups_list_res = json.loads(requests.get("https://pan.baidu.com/mbox/group/list", headers=self._header, params={
-            "web": 1,
-            "start": page,
-            "limit": num,
-            "type": 0,
-            "clienttype": 0
-        }).text)
+        groups_list_res = json.loads(
+            requests.get("https://pan.baidu.com/mbox/group/list", headers=self._header, params={
+                "web": 1,
+                "start": page,
+                "limit": num,
+                "type": 0,
+                "clienttype": 0
+            }).text)
 
         return groups_list_res["records"]
 
@@ -258,13 +277,19 @@ class DuUtil:
                   + 'fs_ids=%5B' + str(fs_id) + '%5D&type=2&' \
                   + 'gid=' + str(gid)
 
+        logger.info("logid: {}".format(logid))
         transfer_res = json.loads(requests.post(
             "https://pan.baidu.com/mbox/msg/transfer?channel=chunlei&clienttype=0&web=1&app_id=250528&logId=" + logid + "&bdstoken=" + self._bdstoken + "&clienttype=0&app_id=250528&web=1",
             headers=self._header,
             data=payload).text)
-
-        return transfer_res['errno'] == 0
+        res = transfer_res['errno'] == 0
+        if res:
+            logger.info("保存文件成功: 文件已保存到 {}".format(path))
+        else:
+            logger.warning("文件保存失败：{}".format(transfer_res))
+        return res
 
     def close(self):
+        logger.info("DuUtil关闭")
         if self._driver:
             self._driver.close()
