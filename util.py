@@ -169,7 +169,10 @@ class Notices:
         print("{} 保存失败".format(item['path']))
 
     def send(self):
-        if self.config['email']:
+        if len(self.success) < 1 and len(self.fail) < 1:
+            logger.info("没有同步文件")
+            return
+        if self.config['email']['enable']:
             self._email_push()
 
     def _email_push(self):
