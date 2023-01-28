@@ -266,7 +266,13 @@ class DuUtil:
             "app_id": 250528,
             "web": 1
         })
-        return json.loads(file_list_res.text)['records']
+        res = json.loads(file_list_res.text)
+        if res['errno'] == 0:
+            return res['records']
+        else:
+            logger.error(res)
+            return False
+            # raise BaseException("")
 
     def saveDir(self, from_uk, msg_id, path, fs_id, gid):
         logid = ""

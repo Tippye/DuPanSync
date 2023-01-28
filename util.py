@@ -173,7 +173,10 @@ class Notices:
             logger.info("没有同步文件")
             return
         if self.config['email']['enable']:
+            logger.info("使用email方式发送通知，通知邮箱：{}".format(self.config['email']['receive_email']))
             self._email_push()
+        else:
+            logger.debug(self.config['email'])
 
     def _email_push(self):
         mail_msg_list = ["""<style type="text/css">
@@ -206,23 +209,57 @@ class Notices:
                   color:#000000;
                   background-color:#EAF2D3;
                   }
+                
+                #customers tr.fail td
+                  {
+                  color:#000000;
+                  background-color:#FFC6D3;
+                  }
+                  
+                #customers tr.fail.alt td
+                  {
+                  background-color:#FEA1BF;
+                  }
+                  
+              
                 </style>""", f"""<span style="font-family: 'Microsoft YaHei UI',serif; color: lightskyblue;text-align: center;" >
         >>>>更新信息数据表格<<<</span> <table id="customers"> <tr> <th>文件名</th> <th>群文件路径</th> <th>保存路径</th> </tr>"""]
-        for index, item in self.success:
-            if index % 2:
-                mail_msg_list.append(f"""<tr>
-                                    <td>{item['path'].split('/')[-1]}</td>
-                                    <td>{item['path']}</td>
-                                    <td>{item['sync_dir']}</td>
-                                    </tr>""")
-            else:
-                mail_msg_list.append(f"""<tr class="alt">
-                                    <td>{item['path'].split('/')[-1]}</td>
-                                    <td>{item['path']}</td>
-                                    <td>{item['sync_dir']}</td>
-                                    </tr>""")
-        mail_msg_list.append(f"""</table><h4><center> >>>>  <a href="https://gitee.com/tippy_q/du-pan-sync">DuPanSync</a>  
-        <<<<</center></h4>""")
+        for index, item in enumerate(self.success):
+            try:
+                if index % 2:
+                    mail_msg_list.append(f"""<tr>
+                                        <td>{item['path'].split('/')[-1]}</td>
+                                        <td>{item['path']}</td>
+                                        <td>{item['save_path']}</td>
+                                        </tr>""")
+                else:
+                    mail_msg_list.append(f"""<tr class="alt">
+                                        <td>{item['path'].split('/')[-1]}</td>
+                                        <td>{item['path']}</td>
+                                        <td>{item['save_path']}</td>
+                                        </tr>""")
+            except BaseException as e:
+                logger.error(e)
+                logger.info(self.success)
+
+        for index, item in enumerate(self.fail):
+            try:
+                if index % 2:
+                    mail_msg_list.append(f"""<tr class="fail">
+                                        <td>{item['path'].split('/')[-1]}</td>
+                                        <td>{item['path']}</td>
+                                        <td>{item['save_path']}</td>
+                                        </tr>""")
+                else:
+                    mail_msg_list.append(f"""<tr class="fail alt">
+                                        <td>{item['path'].split('/')[-1]}</td>
+                                        <td>{item['path']}</td>
+                                        <td>{item['save_path']}</td>
+                                        </tr>""")
+            except BaseException as e:
+                logger.error(e)
+                logger.info(self.fail)
+        mail_msg_list.append(f"""</table><h4><center> >>>>  <a href="https://gitee.com/tippy_q/du-pan-sync">DuPanSync</a> <<<<</center></h4>""")
         return email_push(send_email=self.config['email']['send_email'], send_pwd=self.config['email']['send_pwd'],
                           receive_email=self.config['email']['receive_email'], title="百度网盘同步更新",
                           text="".join(mail_msg_list), smtp_port=self.config['email']['smtp_port'],

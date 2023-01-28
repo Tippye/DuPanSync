@@ -2,25 +2,40 @@ from loguru import logger
 
 from DuUtil import DuUtil
 from syncSetter import getSyncData
-from util import Notices
+from util import Notices, getConfig
 
 
-def getSyncDir(sync_data, du_util: DuUtil, page=1, update_list=None):
+def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
+    print("正在同步：{}".format(sync_data['path']))
     if update_list is None:
         update_list = []
     wait_list = []
+    page = 1
+    page_size = 50
+    ignore_dir = getConfig()["ignore"]
     group_dir_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
-                                         sync_data['gid'], page, 50)
-    sp = sync_data['path'].split('/')
-    sp.pop(len(sp) - 1)
+                                         sync_data['gid'], page, page_size)
+    while len(group_dir_list) == page * page_size:
+        page += 1
+        temp_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
+                                        sync_data['gid'],
+                                        page, page_size)
+        group_dir_list += temp_list if temp_list is not False else []
+    # sp = sync_data['path'].split('/')
+    # sp.pop(len(sp) - 1)
     # save_path = '/'.join(tuple(sp))
     save_path = sync_data['path']
-    file_list = du_util.getFileList(save_path, page=page, num=50)
-
+    page = 1
+    file_list = du_util.getFileList(save_path, page=page, num=page_size, order="name")
+    while len(file_list) == page * page_size:
+        page += 1
+        temp_list = du_util.getFileList(save_path, page=page, num=page_size, order="name")
+        file_list += temp_list if temp_list is not False else []
     for i in range(0, len(group_dir_list)):
         existed = False
         for j in range(0, len(file_list)):
             if group_dir_list[i]['server_filename'] == file_list[j]['server_filename']:
+                file_list.pop(j)
                 existed = True
                 break
         if not existed:
@@ -29,10 +44,13 @@ def getSyncDir(sync_data, du_util: DuUtil, page=1, update_list=None):
                                                    group_dir_list[i]['server_filename']))
             update_list.append(group_dir_list[i])
         elif group_dir_list[i]['isdir'] == 1:
-            wait_list.append(group_dir_list[i])
-
-    if len(group_dir_list) >= 50:
-        update_list = getSyncDir(sync_data, du_util, page + 1, update_list)
+            ig = False
+            for ignore in ignore_dir:
+                if group_dir_list[i]['server_filename'] == ignore:
+                    ig = True
+                    break
+            if not ig:
+                wait_list.append(group_dir_list[i])
 
     for w in wait_list:
         update_list += getSyncDir({
