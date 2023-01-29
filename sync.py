@@ -6,7 +6,7 @@ from util import Notices, getConfig
 
 
 def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
-    print("正在同步：{}".format(sync_data['path']))
+    logger.info("正在同步：{}".format(sync_data['path']))
     if update_list is None:
         update_list = []
     wait_list = []
@@ -15,6 +15,9 @@ def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
     ignore_dir = getConfig()["ignore"]
     group_dir_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
                                          sync_data['gid'], page, page_size)
+    if group_dir_list == False:
+        print("文件夹{}已不存在".format(sync_data['sync_dir']))
+        return []
     while len(group_dir_list) == page * page_size:
         page += 1
         temp_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
