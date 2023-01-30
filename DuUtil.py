@@ -143,7 +143,7 @@ class DuUtil:
 
         logger.debug("请求头Cookie: {}".format(self._header['Cookie']))
 
-    def getFileList(self, path="/", isdir=False, page=1, num=100, order="time"):
+    def getFileList(self, path="/", isdir=False, page=1, num=100, order="time", retry=1):
         """
         获取网盘文件目录
 
@@ -152,20 +152,41 @@ class DuUtil:
         :param page: 页码
         :param num: 一页的数量
         :param order: 排序方式
+        :param retry: 网络重连次数
         :return:
         """
-        return json.loads(requests.get("https://pan.baidu.com/api/list", headers=self._header, params={
-            "channel": "chunlei",
-            "clienttype": 0,
-            "web": 1,
-            "app_id": 250528,
-            "order": order,
-            "desc": 1,
-            "dir": path,
-            "page": page,
-            "num": num,
-            "folder": isdir + 0
-        }).text)['list']
+        res = None
+        try:
+
+            res = json.loads(requests.get("https://pan.baidu.com/api/list", headers=self._header, params={
+                "channel": "chunlei",
+                "clienttype": 0,
+                "web": 1,
+                "app_id": 250528,
+                "order": order,
+                "desc": 1,
+                "dir": path,
+                "page": page,
+                "num": num,
+                "folder": isdir + 0
+            }).text)
+            if res['errno'] == 0:
+                return res['list']
+            else:
+                raise requests.exceptions.RequestException("返回结果错误")
+        except requests.exceptions.ConnectionError as e:
+            retry += 1
+            if retry < self._config['network_retry'] + 1:
+                logger.warning(e)
+                return self.getFileList(path, isdir, page, num, order, retry)
+            else:
+                logger.error(e)
+                logger.info({"path": path, "isdir": isdir, "page": page, "num": num, "order": order, "retry": retry})
+                return []
+        except requests.exceptions.RequestException as e:
+            logger.warning(e)
+            logger.info(res)
+            return []
 
     def getGroupList(self, page=0, num=20):
         """
@@ -229,7 +250,7 @@ class DuUtil:
         })
         return json.loads(listshare_res.text)['records']['msg_list']
 
-    def getGroupDir(self, group_uk, msg_id, fs_id, group_id, page=1, num=50):
+    def getGroupDir(self, group_uk, msg_id, fs_id, group_id, page=1, num=50, retry=0):
         """
         获取群文件列表（不是根目录的）
 
@@ -239,6 +260,7 @@ class DuUtil:
         :param group_id:
         :param page: 页码
         :param num: 一页的数量
+        :param retry: 请求重试此数
         :return:[{
             "category": 6,
             "fs_id": 142717881277597,
@@ -252,27 +274,44 @@ class DuUtil:
             "size": 0
         }]
         """
-        file_list_res = requests.post("https://pan.baidu.com/mbox/msg/shareinfo", headers=self._header, params={
-            "from_uk": group_uk,
-            "msg_id": msg_id,
-            "type": 2,
-            "num": num,
-            "page": page,
-            "fs_id": fs_id,
-            "gid": group_id,
-            "limit": 50,
-            "desc": 1,
-            "clienttype": 0,
-            "app_id": 250528,
-            "web": 1
-        })
-        res = json.loads(file_list_res.text)
-        if res['errno'] == 0:
-            return res['records']
-        else:
-            logger.error(res)
-            return False
-            # raise BaseException("")
+        res = None
+        try:
+            file_list_res = requests.post("https://pan.baidu.com/mbox/msg/shareinfo", headers=self._header, params={
+                "from_uk": group_uk,
+                "msg_id": msg_id,
+                "type": 2,
+                "num": num,
+                "page": page,
+                "fs_id": fs_id,
+                "gid": group_id,
+                "limit": 50,
+                "desc": 1,
+                "clienttype": 0,
+                "app_id": 250528,
+                "web": 1
+            })
+            res = json.loads(file_list_res.text)
+            if res['errno'] == 0:
+                return res['records']
+            else:
+                raise requests.exceptions.RequestException("返回结果错误")
+                # raise BaseException("")
+        except requests.exceptions.ConnectionError as e:
+            retry += 1
+            if retry < self._config['network_retry'] + 1:
+                logger.warning(e)
+                return self.getGroupDir(group_uk, msg_id, fs_id, group_id, page, num, retry)
+            else:
+                logger.error(e)
+                logger.info({
+                    "group_uk": group_uk, "msg_id": msg_id, "fs_id": fs_id, "group_id": group_id, "page": page,
+                    "num": num
+                })
+                return []
+        except requests.exceptions.RequestException as e:
+            logger.warning(e)
+            logger.info(res)
+            return []
 
     def saveDir(self, from_uk, msg_id, path, fs_id, gid):
         logid = ""

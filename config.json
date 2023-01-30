@@ -11,5 +11,6 @@
       "receive_email": "xxxxx@qq.com"
     }
   },
-  "ignore": ["cmake-build-debug",".idea"]
+  "ignore": ["cmake-build-debug",".idea"],
+  "network_retry": 5
 }
