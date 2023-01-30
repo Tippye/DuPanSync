@@ -1,0 +1,17 @@
+[
+  {
+    "path": ["/2024一研为定/02.2024考研英语【此文件夹自动更新-无需保存-有问题联系微信客服！】/03.【2024考研英语】田静vip班"],
+    "notice": {
+      "email": {
+        "enable": true,
+        "receive_email": "pay.ne@qq.com"
+      },
+      "request": {
+        "enable": false,
+        "url": "test.com/test",
+        "method": "GET",
+        "header": {}
+      }
+    }
+  }
+]

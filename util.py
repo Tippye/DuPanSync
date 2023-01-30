@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 import zxing as zxing
 import requests as requests
@@ -152,12 +153,19 @@ class Notices:
     fail = None
     success_num = None
     config = None
+    subscription = None
 
     def __init__(self):
         self.success = []
         self.fail = []
         self.success_num = 0
         self.config = getConfig()['notice']
+        try:
+            with open("./temp/sub.json", 'r') as f:
+                self.subscription = json.load(f)
+        finally:
+            if f:
+                f.close()
 
     def addSuccess(self, item):
         self.success.append(item)
@@ -172,13 +180,59 @@ class Notices:
         if len(self.success) < 1 and len(self.fail) < 1:
             logger.info("没有同步文件")
             return
+        self._email_push()
         if self.config['email']['enable']:
             logger.info("使用email方式发送通知，通知邮箱：{}".format(self.config['email']['receive_email']))
-            self._email_push()
         else:
             logger.debug(self.config['email'])
 
-    def _email_push(self):
+    def send_sub(self):
+        if self.subscription is None:
+            logger.info("没有订阅用户")
+            return
+
+        for sub in self.subscription:
+            sub_send_list = []
+            for p in sub['path']:
+                for s in self.success:
+                    if len(re.findall('^' + p, s['path'])) > 0:
+                        sub_send_list.append(s)
+                        break
+
+            if len(sub_send_list) > 0:
+                if sub['notice']['email']['enable']:
+                    self._email_push(success=sub_send_list, recive=sub['notice']['email']['receive_email'])
+                if sub['notice']['request']['enable']:
+                    requests.request(method=sub['notice']['request']['method'], url=sub['notice']['request']['url'])
+                    self._request_push(sub['notice']['request']['url'], sub['notice']['request']['method'],
+                                       sub['notice']['request']['header'])
+
+    def _request_push(self, url, method="GET", header=None, success=None, fail=None):
+        if success is None and fail is None:
+            success = self.success
+            fail = self.fail
+        if header is None:
+            header = {}
+        data = {
+            "success": success,
+            "fail": fail
+        }
+        if method == "GET":
+            requests.request(method="GET", url=url, params=data, headers=header)
+            logger.info("GET请求已发送，url={}".format(url))
+        elif method == "POST":
+            requests.request(method="POST", url=url, data=data, headers=header)
+            logger.info("POST请求已发送，url={}".format(url))
+
+    def _email_push(self, success=None, fail=None, recive=None):
+        if not self.config['email']['enable']:
+            logger.info("未配置email通知方式")
+            return
+        if success is None and fail is None:
+            success = self.success
+            fail = self.fail
+        if recive is None:
+            recive = self.config['email']['receive_email']
         mail_msg_list = ["""<style type="text/css">
                 #customers
                   {
@@ -224,44 +278,47 @@ class Notices:
               
                 </style>""", f"""<span style="font-family: 'Microsoft YaHei UI',serif; color: lightskyblue;text-align: center;" >
         >>>>更新信息数据表格<<<</span> <table id="customers"> <tr> <th>文件名</th> <th>群文件路径</th> <th>保存路径</th> </tr>"""]
-        for index, item in enumerate(self.success):
-            try:
-                if index % 2:
-                    mail_msg_list.append(f"""<tr>
-                                        <td>{item['path'].split('/')[-1]}</td>
-                                        <td>{item['path']}</td>
-                                        <td>{item['save_path']}</td>
-                                        </tr>""")
-                else:
-                    mail_msg_list.append(f"""<tr class="alt">
-                                        <td>{item['path'].split('/')[-1]}</td>
-                                        <td>{item['path']}</td>
-                                        <td>{item['save_path']}</td>
-                                        </tr>""")
-            except BaseException as e:
-                logger.error(e)
-                logger.info(self.success)
+        if success is not None:
+            for index, item in enumerate(success):
+                try:
+                    if index % 2:
+                        mail_msg_list.append(f"""<tr>
+                                            <td>{item['path'].split('/')[-1]}</td>
+                                            <td>{item['path']}</td>
+                                            <td>{item['save_path']}</td>
+                                            </tr>""")
+                    else:
+                        mail_msg_list.append(f"""<tr class="alt">
+                                            <td>{item['path'].split('/')[-1]}</td>
+                                            <td>{item['path']}</td>
+                                            <td>{item['save_path']}</td>
+                                            </tr>""")
+                except BaseException as e:
+                    logger.error(e)
+                    logger.info(success)
 
-        for index, item in enumerate(self.fail):
-            try:
-                if index % 2:
-                    mail_msg_list.append(f"""<tr class="fail">
-                                        <td>{item['path'].split('/')[-1]}</td>
-                                        <td>{item['path']}</td>
-                                        <td>{item['save_path']}</td>
-                                        </tr>""")
-                else:
-                    mail_msg_list.append(f"""<tr class="fail alt">
-                                        <td>{item['path'].split('/')[-1]}</td>
-                                        <td>{item['path']}</td>
-                                        <td>{item['save_path']}</td>
-                                        </tr>""")
-            except BaseException as e:
-                logger.error(e)
-                logger.info(self.fail)
-        mail_msg_list.append(f"""</table><h4><center> >>>>  <a href="https://gitee.com/tippy_q/du-pan-sync">DuPanSync</a> <<<<</center></h4>""")
+        if fail is not None:
+            for index, item in enumerate(fail):
+                try:
+                    if index % 2:
+                        mail_msg_list.append(f"""<tr class="fail">
+                                            <td>{item['path'].split('/')[-1]}</td>
+                                            <td>{item['path']}</td>
+                                            <td>{item['save_path']}</td>
+                                            </tr>""")
+                    else:
+                        mail_msg_list.append(f"""<tr class="fail alt">
+                                            <td>{item['path'].split('/')[-1]}</td>
+                                            <td>{item['path']}</td>
+                                            <td>{item['save_path']}</td>
+                                            </tr>""")
+                except BaseException as e:
+                    logger.error(e)
+                    logger.info(fail)
+        mail_msg_list.append(
+            f"""</table><h4><center> >>>>  <a href="https://gitee.com/tippy_q/du-pan-sync">DuPanSync</a> <<<<</center></h4>""")
         return email_push(send_email=self.config['email']['send_email'], send_pwd=self.config['email']['send_pwd'],
-                          receive_email=self.config['email']['receive_email'], title="百度网盘同步更新",
+                          receive_email=recive, title="百度网盘同步更新",
                           text="".join(mail_msg_list), smtp_port=self.config['email']['smtp_port'],
                           smtp_address=self.config['email']['smtp_address'])
 

@@ -135,3 +135,12 @@
 - [x] 定时任务自动执行
 - [x] 新文件同步提醒
 - [ ] iOS快捷指令（或许会做）
+
+# Others
+1. 关于订阅功能
+   - 由于没有可视化界面不太方便在UI上控制订阅列表，所以只能手动编辑[sub.json](./temp/sub.json)文件，`notice`内容写法同[config.json](./config.json)的`notice`
+   - `path`的内容与[sync.json](./temp/sync.json)中的`path`对应，不过可以用正则表达式，要确保正则匹配时可以在开头匹配到
+     - 如[sync.json](./temp/sync.json)中有一项的`path`是`/2024一研为定/02.2024考研英语`，我想同步这里面的`/2024一研为定/02.2024考研英语/03.【2024考研英语】田静vip班`,那么[sub.json](./temp/sub.json)中的`path`应该变成`["/2024一研为定/02.2024考研英语/03.【2024考研英语】田静vip班"]`
+2. 关于邮箱通知
+   - 发送邮箱始终使用[config.json](./config.json)中的内容，如果[config.json](./config.json)的`email`的`enable`为`false`，订阅中的邮箱通知也不会生效
+   - 发送邮箱的密码不是登录密码，需要去对应邮箱的控制台生成授权码，[smtp使用方法](http://service.mail.qq.com/detail?search=smtp)

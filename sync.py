@@ -7,6 +7,7 @@ from util import Notices, getConfig
 
 def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
     logger.info("正在同步：{}".format(sync_data['path']))
+    print("正在同步：{}".format(sync_data['path']))
     if update_list is None:
         update_list = []
     wait_list = []
@@ -70,15 +71,17 @@ def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
 def syncDir(sync_data, du_util: DuUtil, notices: Notices):
     update_list = getSyncDir(sync_data, du_util)
     logger.info("共发现{}个待更新文件/文件夹".format(len(update_list)))
+    s = 0
     for item in update_list:
         if du_util.saveDir(sync_data['from_uk'], sync_data['msg_id'], item['save_path'], item['fs_id'],
                            sync_data['gid']):
             notices.addSuccess(item)
+            s += 1
         else:
             notices.addFail(item)
 
-    logger.info("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], notices.success_num))
-    print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], notices.success_num))
+    logger.info("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], s))
+    print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], s))
 
 
 def syncAllDir(du_util: DuUtil):
@@ -93,3 +96,4 @@ def syncAllDir(du_util: DuUtil):
         syncDir(d, du_util, notices)
 
     notices.send()
+    notices.send_sub()
