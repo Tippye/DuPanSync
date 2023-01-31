@@ -39,8 +39,6 @@ def shellSync():
         syncAllDir(dp)
     except requests.exceptions.ConnectionError:
         print("网络连接错误")
-    except BaseException as e:
-        logger.error(e)
     finally:
         if dp:
             dp.close()

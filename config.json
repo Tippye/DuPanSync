@@ -3,7 +3,7 @@
   "qrCodeImagePath": "./temp/login.png",
   "notice": {
     "email": {
-      "enable": false,
+      "enable": true,
       "smtp_address": "smtp.qq.com",
       "smtp_port": 465,
       "send_email": "xxxxqq.com",
@@ -12,5 +12,6 @@
     }
   },
   "ignore": ["cmake-build-debug",".idea"],
-  "network_retry": 5
+  "network_retry": 5,
+  "enable_store_request": false
 }

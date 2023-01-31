@@ -1,3 +1,5 @@
+from time import sleep
+
 from loguru import logger
 
 from DuUtil import DuUtil
@@ -5,15 +7,80 @@ from syncSetter import getSyncData
 from util import Notices, getConfig
 
 
-def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
-    logger.info("正在同步：{}".format(sync_data['path']))
-    print("正在同步：{}".format(sync_data['path']))
-    if update_list is None:
+def getSyncDir(sync_data, du_util: DuUtil):
+    try:
+        wait_list = [sync_data]
+        page_size = 50
         update_list = []
-    wait_list = []
-    page = 1
-    page_size = 50
-    ignore_dir = getConfig()["ignore"]
+        ignore_list = getConfig()["ignore"]
+        ignore_dic = dict()
+        for il in ignore_list:
+            ignore_dic[il] = True
+        while len(wait_list) > 0:
+            sd = wait_list.pop(0)
+            logger.info("正在同步：{}".format(sd['path']))
+            print("正在同步：{}".format(sd['path']))
+
+            # 获取群文件中的文件列表
+            need_get_group_dir = True
+            group_dir_list = []
+            page = 1
+            while need_get_group_dir:
+                group_dir_list += du_util.getGroupDir(sd['from_uk'], sd['msg_id'], sd['fs_ids'][0],
+                                                      sd['gid'], page, page_size)
+                if page * page_size <= len(group_dir_list):
+                    page += 1
+                else:
+                    need_get_group_dir = False
+
+            # 获取自己网盘中的文件列表
+            need_get_file_list = True
+            file_list = []
+            page = 1
+            while need_get_file_list:
+                file_list += du_util.getFileList(sd['path'], page=page, num=page_size, order="name")
+                if page * page_size <= len(group_dir_list):
+                    page += 1
+                else:
+                    need_get_file_list = False
+
+            # 查找网盘哪没有的文件
+            for i in range(0, len(group_dir_list)):
+                existed = False
+                for j in range(0, len(file_list)):
+                    if group_dir_list[i]['server_filename'] == file_list[j]['server_filename']:
+                        file_list.pop(j)
+                        existed = True
+                        break
+                if not existed:
+                    # 不存在直接加入待更新列表
+                    logger.info("发现未保存{0}：{1}".format("目录" if group_dir_list[i]['isdir'] == 1 else "文件",
+                                                           group_dir_list[i]['server_filename']))
+
+                    group_dir_list[i]['save_path'] = sd['path']
+                    update_list.append(group_dir_list[i])
+                elif group_dir_list[i]['isdir'] == 1:
+                    # 如果存在但是是文件夹，而且不属于忽略目录，就添加到待同步目录中进入循环
+                    try:
+                        ignore_dic[group_dir_list[i]['server_filename']]
+                    except KeyError:
+                        wait_list.append({
+                            "gid": sync_data['gid'],
+                            "from_uk": sync_data['from_uk'],
+                            "msg_id": sync_data['msg_id'],
+                            "fs_ids": [group_dir_list[i]['fs_id']],
+                            "path": "{0}/{1}".format(sd['path'], group_dir_list[i]['server_filename']),
+                            "sync_dir": group_dir_list[i]['path']
+                        })
+
+        return update_list
+    except BaseException as e:
+        logger.error("{}同步出现错误".format(sync_data['sync_dir']))
+        logger.error(e)
+        return []
+
+
+def syncDir(sync_data, du_util: DuUtil, notices: Notices):
     sync_path = sync_data['sync_dir'].split('/')
     group_root_list = du_util.getGroupRoot(sync_data['gid'])
     temp_fs_id = None
@@ -24,6 +91,8 @@ def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
             temp_fs_id = grl['file_list'][0]['fs_id']
             break
 
+    page = 1
+    page_size = 50
     for sp in sync_path:
         if sp == sync_path[0]:
             continue
@@ -44,62 +113,6 @@ def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
     sync_data['fs_ids'] = []
     sync_data['fs_ids'].append(temp_fs_id)
 
-    group_dir_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
-                                         sync_data['gid'], page, page_size)
-    if group_dir_list == False:
-        print("文件夹{}已不存在".format(sync_data['sync_dir']))
-        return []
-    page = 1
-    while len(group_dir_list) == page * page_size:
-        page += 1
-        temp_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
-                                        sync_data['gid'], page, page_size)
-        group_dir_list += temp_list if temp_list is not False else []
-    # sp = sync_data['path'].split('/')
-    # sp.pop(len(sp) - 1)
-    # save_path = '/'.join(tuple(sp))
-    save_path = sync_data['path']
-    page = 1
-    file_list = du_util.getFileList(save_path, page=page, num=page_size, order="name")
-    while len(file_list) == page * page_size:
-        page += 1
-        temp_list = du_util.getFileList(save_path, page=page, num=page_size, order="name")
-        file_list += temp_list if temp_list is not False else []
-    for i in range(0, len(group_dir_list)):
-        existed = False
-        for j in range(0, len(file_list)):
-            if group_dir_list[i]['server_filename'] == file_list[j]['server_filename']:
-                file_list.pop(j)
-                existed = True
-                break
-        if not existed:
-            group_dir_list[i]['save_path'] = sync_data['path']
-            logger.info("发现未保存{0}：{1}".format("目录" if group_dir_list[i]['isdir'] == 1 else "文件",
-                                                   group_dir_list[i]['server_filename']))
-            update_list.append(group_dir_list[i])
-        elif group_dir_list[i]['isdir'] == 1:
-            ig = False
-            for ignore in ignore_dir:
-                if group_dir_list[i]['server_filename'] == ignore:
-                    ig = True
-                    break
-            if not ig:
-                wait_list.append(group_dir_list[i])
-
-    for w in wait_list:
-        update_list += getSyncDir({
-            "gid": sync_data['gid'],
-            "from_uk": sync_data['from_uk'],
-            "msg_id": sync_data['msg_id'],
-            "fs_ids": [w['fs_id']],
-            "path": "{0}/{1}".format(save_path, w['server_filename']),
-            "sync_dir": w['path']
-        }, du_util)
-
-    return update_list
-
-
-def syncDir(sync_data, du_util: DuUtil, notices: Notices):
     update_list = getSyncDir(sync_data, du_util)
     logger.info("共发现{}个待更新文件/文件夹".format(len(update_list)))
     s = 0
@@ -125,6 +138,7 @@ def syncAllDir(du_util: DuUtil):
 
     for d in sd:
         syncDir(d, du_util, notices)
+        sleep(10)
 
     notices.send()
     notices.send_sub()

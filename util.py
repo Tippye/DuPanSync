@@ -6,6 +6,7 @@ import zxing as zxing
 import requests as requests
 import smtplib
 from email.mime.text import MIMEText
+import hashlib
 
 from loguru import logger
 
@@ -321,6 +322,15 @@ class Notices:
                           receive_email=recive, title="百度网盘同步更新",
                           text="".join(mail_msg_list), smtp_port=self.config['email']['smtp_port'],
                           smtp_address=self.config['email']['smtp_address'])
+
+
+def md5_string(in_str):
+    if type(in_str) is not str:
+        in_str = str(in_str)
+    md5 = hashlib.md5()
+    md5.update(in_str.encode("utf8"))
+    result = md5.hexdigest()
+    return result
 
 
 def zxingParseQRCode(filePath):

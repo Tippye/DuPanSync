@@ -4,7 +4,6 @@ import re
 import urllib
 from time import sleep
 
-import requests as requests
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
@@ -14,6 +13,7 @@ import qrcode_terminal
 from loguru import logger
 
 from util import zxingParseQRCode, getConfig
+from request import Request
 
 
 class DuUtil:
@@ -22,6 +22,7 @@ class DuUtil:
     _header = None
     _driver = None
     _bdstoken = None
+    _request = None
 
     def __init__(self):
         logger.info("初始化DuUtil...")
@@ -29,6 +30,7 @@ class DuUtil:
         self._config = getConfig()
         self._setDriver()
         self._setHeader()
+        self._request = Request("https://pan.baidu.com", self._header)
         logger.info("DuUtil初始化成功")
         print("初始化成功")
 
@@ -143,7 +145,7 @@ class DuUtil:
 
         logger.debug("请求头Cookie: {}".format(self._header['Cookie']))
 
-    def getFileList(self, path="/", isdir=False, page=1, num=100, order="time", retry=1):
+    def getFileList(self, path="/", isdir=False, page=1, num=100, order="time"):
         """
         获取网盘文件目录
 
@@ -152,39 +154,23 @@ class DuUtil:
         :param page: 页码
         :param num: 一页的数量
         :param order: 排序方式
-        :param retry: 网络重连次数
         :return:
         """
-        res = None
+        res = self._request.get(url="/api/list", params={
+            "channel": "chunlei",
+            "clienttype": 0,
+            "web": 1,
+            "app_id": 250528,
+            "order": order,
+            "desc": 1,
+            "dir": path,
+            "page": page,
+            "num": num,
+            "folder": isdir + 0
+        })
         try:
-
-            res = json.loads(requests.get("https://pan.baidu.com/api/list", headers=self._header, params={
-                "channel": "chunlei",
-                "clienttype": 0,
-                "web": 1,
-                "app_id": 250528,
-                "order": order,
-                "desc": 1,
-                "dir": path,
-                "page": page,
-                "num": num,
-                "folder": isdir + 0
-            }).text)
-            if res['errno'] == 0:
-                return res['list']
-            else:
-                raise requests.exceptions.RequestException("返回结果错误")
-        except requests.exceptions.ConnectionError as e:
-            retry += 1
-            if retry < self._config['network_retry'] + 1:
-                logger.warning(e)
-                return self.getFileList(path, isdir, page, num, order, retry)
-            else:
-                logger.error(e)
-                logger.info({"path": path, "isdir": isdir, "page": page, "num": num, "order": order, "retry": retry})
-                return []
-        except requests.exceptions.RequestException as e:
-            logger.warning(e)
+            return res['list']
+        except KeyError:
             logger.info(res)
             return []
 
@@ -221,16 +207,18 @@ class DuUtil:
                     "group_remark": ""
                 }]
         """
-        groups_list_res = json.loads(
-            requests.get("https://pan.baidu.com/mbox/group/list", headers=self._header, params={
-                "web": 1,
-                "start": page,
-                "limit": num,
-                "type": 0,
-                "clienttype": 0
-            }).text)
-
-        return groups_list_res["records"]
+        groups_list_res = self._request.get(url="/mbox/group/list", params={
+            "web": 1,
+            "start": page,
+            "limit": num,
+            "type": 0,
+            "clienttype": 0
+        })
+        try:
+            return groups_list_res["records"]
+        except KeyError:
+            logger.info(groups_list_res)
+            return []
 
     def getGroupRoot(self, group_id):
         """
@@ -239,18 +227,23 @@ class DuUtil:
         :param group_id: 群组gid
         :return:
         """
-        listshare_res = requests.get("https://pan.baidu.com/mbox/group/listshare", headers=self._header, params={
-            "web": 1,
-            "type": 2,
-            "gid": group_id,
-            "limit": 50,
-            "desc": 1,
-            "app-id": 250528,
-            "clienttype": 0
-        })
-        return json.loads(listshare_res.text)['records']['msg_list']
+        listshare_res = None
+        try:
+            listshare_res = self._request.get(url="/mbox/group/listshare", params={
+                "web": 1,
+                "type": 2,
+                "gid": group_id,
+                "limit": 50,
+                "desc": 1,
+                "app-id": 250528,
+                "clienttype": 0
+            })
+            return listshare_res['records']['msg_list']
+        except KeyError:
+            logger.info(listshare_res.text)
+            return []
 
-    def getGroupDir(self, group_uk, msg_id, fs_id, group_id, page=1, num=50, retry=0):
+    def getGroupDir(self, group_uk, msg_id, fs_id, group_id, page=1, num=50):
         """
         获取群文件列表（不是根目录的）
 
@@ -260,7 +253,6 @@ class DuUtil:
         :param group_id:
         :param page: 页码
         :param num: 一页的数量
-        :param retry: 请求重试此数
         :return:[{
             "category": 6,
             "fs_id": 142717881277597,
@@ -274,42 +266,23 @@ class DuUtil:
             "size": 0
         }]
         """
-        res = None
+        res = self._request.post(url="/mbox/msg/shareinfo", params={
+            "from_uk": group_uk,
+            "msg_id": msg_id,
+            "type": 2,
+            "num": num,
+            "page": page,
+            "fs_id": fs_id,
+            "gid": group_id,
+            "limit": 50,
+            "desc": 1,
+            "clienttype": 0,
+            "app_id": 250528,
+            "web": 1
+        })
         try:
-            file_list_res = requests.post("https://pan.baidu.com/mbox/msg/shareinfo", headers=self._header, params={
-                "from_uk": group_uk,
-                "msg_id": msg_id,
-                "type": 2,
-                "num": num,
-                "page": page,
-                "fs_id": fs_id,
-                "gid": group_id,
-                "limit": 50,
-                "desc": 1,
-                "clienttype": 0,
-                "app_id": 250528,
-                "web": 1
-            })
-            res = json.loads(file_list_res.text)
-            if res['errno'] == 0:
-                return res['records']
-            else:
-                raise requests.exceptions.RequestException("返回结果错误")
-                # raise BaseException("")
-        except requests.exceptions.ConnectionError as e:
-            retry += 1
-            if retry < self._config['network_retry'] + 1:
-                logger.warning(e)
-                return self.getGroupDir(group_uk, msg_id, fs_id, group_id, page, num, retry)
-            else:
-                logger.error(e)
-                logger.info({
-                    "group_uk": group_uk, "msg_id": msg_id, "fs_id": fs_id, "group_id": group_id, "page": page,
-                    "num": num
-                })
-                return []
-        except requests.exceptions.RequestException as e:
-            logger.warning(e)
+            return res['records']
+        except KeyError:
             logger.info(res)
             return []
 
@@ -327,20 +300,20 @@ class DuUtil:
                   + 'gid=' + str(gid)
 
         logger.debug("logid: {}".format(logid))
-        transfer_res = json.loads(requests.post(
-            "https://pan.baidu.com/mbox/msg/transfer?channel=chunlei&clienttype=0&web=1&app_id=250528&logId=" + logid + "&bdstoken=" + self._bdstoken + "&clienttype=0&app_id=250528&web=1",
-            headers=self._header,
-            data=payload).text)
-        res = transfer_res['errno'] == 0
-        if res:
+        transfer_res = self._request.post(
+            url="/mbox/msg/transfer?channel=chunlei&clienttype=0&web=1&app_id=250528&logId=" + logid + "&bdstoken=" + self._bdstoken + "&clienttype=0&app_id=250528&web=1",
+            data=payload)
+        if transfer_res['errno'] == 0:
             logger.info("保存文件成功: 文件已保存到 {}".format(path))
             print("保存成功")
+            return True
         else:
             logger.warning("文件保存失败：{}".format(transfer_res))
             print("保存失败")
-        return res
+            return False
 
     def close(self):
         logger.info("DuUtil关闭")
+        logger.info("一共发送了{}次请求", self._request.get_num())
         if self._driver:
             self._driver.close()
