@@ -14,16 +14,46 @@ def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
     page = 1
     page_size = 50
     ignore_dir = getConfig()["ignore"]
+    sync_path = sync_data['sync_dir'].split('/')
+    group_root_list = du_util.getGroupRoot(sync_data['gid'])
+    temp_fs_id = None
+    for grl in group_root_list:
+        if grl['file_list'][0]['server_filename'] == sync_path[0]:
+            sync_data['msg_id'] = grl['msg_id']
+            sync_data['from_uk'] = grl['uk']
+            temp_fs_id = grl['file_list'][0]['fs_id']
+            break
+
+    for sp in sync_path:
+        if sp == sync_path[0]:
+            continue
+        temp_dir = du_util.getGroupDir(group_id=sync_data['gid'], group_uk=sync_data['from_uk'],
+                                       msg_id=sync_data['msg_id'], fs_id=temp_fs_id, page=page, num=page_size)
+        page = 1
+        while len(temp_dir) == page * page_size:
+            page += 1
+            temp_list = du_util.getGroupDir(group_id=sync_data['gid'], group_uk=sync_data['from_uk'],
+                                            msg_id=sync_data['msg_id'], fs_id=temp_fs_id, page=page, num=page_size)
+            temp_dir += temp_list if temp_list is not False else []
+
+        for td in temp_dir:
+            if td['server_filename'] == sp:
+                temp_fs_id = td['fs_id']
+                break
+
+    sync_data['fs_ids'] = []
+    sync_data['fs_ids'].append(temp_fs_id)
+
     group_dir_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
                                          sync_data['gid'], page, page_size)
     if group_dir_list == False:
         print("文件夹{}已不存在".format(sync_data['sync_dir']))
         return []
+    page = 1
     while len(group_dir_list) == page * page_size:
         page += 1
         temp_list = du_util.getGroupDir(sync_data['from_uk'], sync_data['msg_id'], sync_data['fs_ids'][0],
-                                        sync_data['gid'],
-                                        page, page_size)
+                                        sync_data['gid'], page, page_size)
         group_dir_list += temp_list if temp_list is not False else []
     # sp = sync_data['path'].split('/')
     # sp.pop(len(sp) - 1)
@@ -62,7 +92,8 @@ def getSyncDir(sync_data, du_util: DuUtil, update_list=None):
             "from_uk": sync_data['from_uk'],
             "msg_id": sync_data['msg_id'],
             "fs_ids": [w['fs_id']],
-            "path": "{0}/{1}".format(save_path, w['server_filename'])
+            "path": "{0}/{1}".format(save_path, w['server_filename']),
+            "sync_dir": w['path']
         }, du_util)
 
     return update_list
