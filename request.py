@@ -15,6 +15,7 @@ class Request:
     _retry_max = None
     _enable_store = None
     _num = None
+    _timeout = None
 
     _req_store = None
 
@@ -30,6 +31,7 @@ class Request:
         self._retry_max = config["network_retry"]
         self._enable_store = config["enable_store_request"]
         self._num = 0
+        self._timeout = 5
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _get(self, url, params=None, data=None, header=None):
@@ -64,7 +66,7 @@ class Request:
                 pass
         logger.info("Start Get {}".format(_url))
         res = requests.get(url=_url, params=params, data=data,
-                           headers=_header, verify=False)
+                           headers=_header, verify=False, timeout=self._timeout)
         logger.info("End Get {0}\tres={1}".format(_url, res))
         self._num += 1
         if self._enable_store:
@@ -112,7 +114,7 @@ class Request:
                 pass
         logger.info("Start Post {}".format(_url))
         res = requests.post(url=_url, data=data, params=params,
-                            headers=_header, verify=False)
+                            headers=_header, verify=False, timeout=self._timeout)
         logger.info("End Post {0}\tres={1}".format(_url, res))
         self._num += 1
         if self._enable_store:
@@ -149,6 +151,7 @@ class Request:
             elif method == "POST":
                 res = self._post(**kwargs)
             if res is not None:
+                res.close()
                 return json.loads(res.text)
         except (requests.exceptions.ConnectionError, requests.exceptions.SSLError) as e:
             sleep(1)

@@ -144,3 +144,9 @@
 2. 关于邮箱通知
    - 发送邮箱始终使用[config.json](./config.json)中的内容，如果[config.json](./config.json)的`email`的`enable`为`false`，订阅中的邮箱通知也不会生效
    - 发送邮箱的密码不是登录密码，需要去对应邮箱的控制台生成授权码，[smtp使用方法](http://service.mail.qq.com/detail?search=smtp)
+
+> 实测同步考研的5门课程总共请求了2266次百度接口
+> 
+> 程序占用内存（不开启http缓存的情况下）约60Mb
+> 
+> 运行的12分钟左右

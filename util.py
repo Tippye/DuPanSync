@@ -188,25 +188,35 @@ class Notices:
             logger.debug(self.config['email'])
 
     def send_sub(self):
-        if self.subscription is None:
-            logger.info("没有订阅用户")
-            return
+        try:
+            if self.subscription is None:
+                logger.info("没有订阅用户")
+                return
 
-        for sub in self.subscription:
-            sub_send_list = []
-            for p in sub['path']:
-                for s in self.success:
-                    if len(re.findall('^' + p, s['path'])) > 0:
-                        sub_send_list.append(s)
-                        break
+            for sub in self.subscription:
+                sub_send_list = []
+                for p in sub['path']:
+                    for s in self.success:
+                        if len(re.findall('^' + p, s['path'])) > 0:
+                            sub_send_list.append(s)
+                            break
 
-            if len(sub_send_list) > 0:
-                if sub['notice']['email']['enable']:
-                    self._email_push(success=sub_send_list, recive=sub['notice']['email']['receive_email'])
-                if sub['notice']['request']['enable']:
-                    requests.request(method=sub['notice']['request']['method'], url=sub['notice']['request']['url'])
-                    self._request_push(sub['notice']['request']['url'], sub['notice']['request']['method'],
-                                       sub['notice']['request']['header'])
+                if len(sub_send_list) > 0:
+                    if sub['notice']['email']['enable']:
+                        logger.info(
+                            "用户{0}的订阅更新：{1}".format(sub['notice']['email']['receive_email'], sub_send_list))
+                        self._email_push(success=sub_send_list, recive=sub['notice']['email']['receive_email'])
+                    if sub['notice']['request']['enable']:
+                        logger.info(
+                            "用户{0}的订阅更新：{1}".format(sub['notice']['request']['url'], sub_send_list))
+                        requests.request(method=sub['notice']['request']['method'], url=sub['notice']['request']['url'])
+                        self._request_push(sub['notice']['request']['url'], sub['notice']['request']['method'],
+                                           sub['notice']['request']['header'])
+                else:
+                    logger.info("用户{0}的订阅没有更新，订阅地址：{1}".format(sub['notice']['email']['receive_email'],
+                                                                            sub['path']))
+        except BaseException as e:
+            logger.warning(e)
 
     def _request_push(self, url, method="GET", header=None, success=None, fail=None):
         if success is None and fail is None:
@@ -226,102 +236,108 @@ class Notices:
             logger.info("POST请求已发送，url={}".format(url))
 
     def _email_push(self, success=None, fail=None, recive=None):
-        if not self.config['email']['enable']:
-            logger.info("未配置email通知方式")
-            return
-        if success is None and fail is None:
-            success = self.success
-            fail = self.fail
-        if recive is None:
-            recive = self.config['email']['receive_email']
-        mail_msg_list = ["""<style type="text/css">
-                #customers
-                  {
-                  font-family:"Trebuchet MS", Arial, Helvetica, sans-serif;
-                  width:100%;
-                  border-collapse:collapse;
-                  }
-
-                #customers td, #customers th
-                  {
-                  font-size:1em;
-                  border:1px solid #98bf21;
-                  padding:3px 7px 2px 7px;
-                  }
-
-                #customers th
-                  {
-                  font-size:1.1em;
-                  text-align:left;
-                  padding-top:5px;
-                  padding-bottom:4px;
-                  background-color:#A7C942;
-                  color:#ffffff;
-                  }
-
-                #customers tr.alt td
-                  {
-                  color:#000000;
-                  background-color:#EAF2D3;
-                  }
-                
-                #customers tr.fail td
-                  {
-                  color:#000000;
-                  background-color:#FFC6D3;
-                  }
+        try:
+            if not self.config['email']['enable']:
+                logger.info("未配置email通知方式")
+                return
+            if success is None and fail is None:
+                success = self.success
+                fail = self.fail
+            if recive is None:
+                recive = self.config['email']['receive_email']
+            mail_msg_list = ["""<style type="text/css">
+                    #customers
+                      {
+                      font-family:"Trebuchet MS", Arial, Helvetica, sans-serif;
+                      width:100%;
+                      border-collapse:collapse;
+                      }
+    
+                    #customers td, #customers th
+                      {
+                      font-size:1em;
+                      border:1px solid #98bf21;
+                      padding:3px 7px 2px 7px;
+                      }
+    
+                    #customers th
+                      {
+                      font-size:1.1em;
+                      text-align:left;
+                      padding-top:5px;
+                      padding-bottom:4px;
+                      background-color:#A7C942;
+                      color:#ffffff;
+                      }
+    
+                    #customers tr.alt td
+                      {
+                      color:#000000;
+                      background-color:#EAF2D3;
+                      }
+                    
+                    #customers tr.fail td
+                      {
+                      color:#000000;
+                      background-color:#FFC6D3;
+                      }
+                      
+                    #customers tr.fail.alt td
+                      {
+                      background-color:#FEA1BF;
+                      }
+                      
                   
-                #customers tr.fail.alt td
-                  {
-                  background-color:#FEA1BF;
-                  }
-                  
-              
-                </style>""", f"""<span style="font-family: 'Microsoft YaHei UI',serif; color: lightskyblue;text-align: center;" >
-        >>>>更新信息数据表格<<<</span> <table id="customers"> <tr> <th>文件名</th> <th>群文件路径</th> <th>保存路径</th> </tr>"""]
-        if success is not None:
-            for index, item in enumerate(success):
-                try:
-                    if index % 2:
-                        mail_msg_list.append(f"""<tr>
-                                            <td>{item['path'].split('/')[-1]}</td>
-                                            <td>{item['path']}</td>
-                                            <td>{item['save_path']}</td>
-                                            </tr>""")
-                    else:
-                        mail_msg_list.append(f"""<tr class="alt">
-                                            <td>{item['path'].split('/')[-1]}</td>
-                                            <td>{item['path']}</td>
-                                            <td>{item['save_path']}</td>
-                                            </tr>""")
-                except BaseException as e:
-                    logger.error(e)
-                    logger.info(success)
+                    </style>""", f"""<span style="font-family: 'Microsoft YaHei UI',serif; color: lightskyblue;text-align: center;" >
+            >>>>更新信息数据表格<<<</span> <table id="customers"> <tr> <th>文件名</th> <th>群文件路径</th> <th>保存路径</th> </tr>"""]
+            if success is not None:
+                for index, item in enumerate(success):
+                    try:
+                        if index % 2:
+                            mail_msg_list.append(f"""<tr>
+                                                <td>{item['path'].split('/')[-1]}</td>
+                                                <td>{item['path']}</td>
+                                                <td>{item['save_path']}</td>
+                                                </tr>""")
+                        else:
+                            mail_msg_list.append(f"""<tr class="alt">
+                                                <td>{item['path'].split('/')[-1]}</td>
+                                                <td>{item['path']}</td>
+                                                <td>{item['save_path']}</td>
+                                                </tr>""")
+                    except BaseException as e:
+                        logger.error(e)
+                        logger.info(success)
 
-        if fail is not None:
-            for index, item in enumerate(fail):
-                try:
-                    if index % 2:
-                        mail_msg_list.append(f"""<tr class="fail">
-                                            <td>{item['path'].split('/')[-1]}</td>
-                                            <td>{item['path']}</td>
-                                            <td>{item['save_path']}</td>
-                                            </tr>""")
-                    else:
-                        mail_msg_list.append(f"""<tr class="fail alt">
-                                            <td>{item['path'].split('/')[-1]}</td>
-                                            <td>{item['path']}</td>
-                                            <td>{item['save_path']}</td>
-                                            </tr>""")
-                except BaseException as e:
-                    logger.error(e)
-                    logger.info(fail)
-        mail_msg_list.append(
-            f"""</table><h4><center> >>>>  <a href="https://gitee.com/tippy_q/du-pan-sync">DuPanSync</a> <<<<</center></h4>""")
-        return email_push(send_email=self.config['email']['send_email'], send_pwd=self.config['email']['send_pwd'],
-                          receive_email=recive, title="百度网盘同步更新",
-                          text="".join(mail_msg_list), smtp_port=self.config['email']['smtp_port'],
-                          smtp_address=self.config['email']['smtp_address'])
+            if fail is not None:
+                for index, item in enumerate(fail):
+                    try:
+                        if index % 2:
+                            mail_msg_list.append(f"""<tr class="fail">
+                                                <td>{item['path'].split('/')[-1]}</td>
+                                                <td>{item['path']}</td>
+                                                <td>{item['save_path']}</td>
+                                                </tr>""")
+                        else:
+                            mail_msg_list.append(f"""<tr class="fail alt">
+                                                <td>{item['path'].split('/')[-1]}</td>
+                                                <td>{item['path']}</td>
+                                                <td>{item['save_path']}</td>
+                                                </tr>""")
+                    except BaseException as e:
+                        logger.error(e)
+                        logger.info(fail)
+            mail_msg_list.append(
+                f"""</table><h4><center> >>>>  <a href="https://gitee.com/tippy_q/du-pan-sync">DuPanSync</a> <<<<</center></h4>""")
+            return email_push(send_email=self.config['email']['send_email'], send_pwd=self.config['email']['send_pwd'],
+                              receive_email=recive, title="百度网盘同步更新",
+                              text="".join(mail_msg_list), smtp_port=self.config['email']['smtp_port'],
+                              smtp_address=self.config['email']['smtp_address'])
+        except BaseException as e:
+            logger.warning("邮件发送失败：{}".format(e))
+            logger.info(success)
+            logger.info(fail)
+            logger.info(recive)
 
 
 def md5_string(in_str):

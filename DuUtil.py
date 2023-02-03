@@ -171,7 +171,7 @@ class DuUtil:
         try:
             return res['list']
         except KeyError:
-            logger.info(res)
+            logger.debug(res)
             return []
 
     def getGroupList(self, page=0, num=20):
@@ -217,7 +217,7 @@ class DuUtil:
         try:
             return groups_list_res["records"]
         except KeyError:
-            logger.info(groups_list_res)
+            logger.debug(groups_list_res)
             return []
 
     def getGroupRoot(self, group_id):
@@ -240,7 +240,7 @@ class DuUtil:
             })
             return listshare_res['records']['msg_list']
         except KeyError:
-            logger.info(listshare_res.text)
+            logger.debug(listshare_res.text)
             return []
 
     def getGroupDir(self, group_uk, msg_id, fs_id, group_id, page=1, num=50):
@@ -283,7 +283,7 @@ class DuUtil:
         try:
             return res['records']
         except KeyError:
-            logger.info(res)
+            logger.debug(res)
             return []
 
     def saveDir(self, from_uk, msg_id, path, fs_id, gid):
@@ -314,6 +314,6 @@ class DuUtil:
 
     def close(self):
         logger.info("DuUtil关闭")
-        logger.info("一共发送了{}次请求", self._request.get_num())
+        logger.debug("一共发送了{}次请求", self._request.get_num())
         if self._driver:
             self._driver.close()

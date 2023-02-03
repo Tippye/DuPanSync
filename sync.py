@@ -1,5 +1,7 @@
 from time import sleep
 
+import requests.exceptions
+import urllib3
 from loguru import logger
 
 from DuUtil import DuUtil
@@ -8,19 +10,19 @@ from util import Notices, getConfig
 
 
 def getSyncDir(sync_data, du_util: DuUtil):
-    try:
-        wait_list = [sync_data]
-        page_size = 50
-        update_list = []
-        ignore_list = getConfig()["ignore"]
-        ignore_dic = dict()
-        for il in ignore_list:
-            ignore_dic[il] = True
-        while len(wait_list) > 0:
-            sd = wait_list.pop(0)
-            logger.info("正在同步：{}".format(sd['path']))
-            print("正在同步：{}".format(sd['path']))
-
+    # try:
+    wait_list = [sync_data]
+    page_size = 50
+    update_list = []
+    ignore_list = getConfig()["ignore"]
+    ignore_dic = dict()
+    for il in ignore_list:
+        ignore_dic[il] = True
+    while len(wait_list) > 0:
+        sd = wait_list.pop(0)
+        logger.info("正在同步：{}".format(sd['path']))
+        print("正在同步：{}".format(sd['path']))
+        try:
             # 获取群文件中的文件列表
             need_get_group_dir = True
             group_dir_list = []
@@ -72,12 +74,26 @@ def getSyncDir(sync_data, du_util: DuUtil):
                             "path": "{0}/{1}".format(sd['path'], group_dir_list[i]['server_filename']),
                             "sync_dir": group_dir_list[i]['path']
                         })
+        except BaseException as e:
+            logger.error("{}同步出现错误".format(sd['sync_dir']))
+            logger.error(e)
+            # if sd['retry'] is not None:
+            #     sd['retry'] += 1
+            # else:
+            #     sd['retry'] = 1
+            try:
+                sd['retry'] += 1
+            except (KeyError, ValueError):
+                sd['retry'] = 1
 
-        return update_list
-    except BaseException as e:
-        logger.error("{}同步出现错误".format(sync_data['sync_dir']))
-        logger.error(e)
-        return []
+            if sd['retry'] < 6:
+                wait_list.append(sd)
+
+    return update_list
+    # except BaseException as e:
+    #     logger.error("{}同步出现错误".format(sync_data['sync_dir']))
+    #     logger.error(e)
+    #     return []
 
 
 def syncDir(sync_data, du_util: DuUtil, notices: Notices):
@@ -114,7 +130,8 @@ def syncDir(sync_data, du_util: DuUtil, notices: Notices):
     sync_data['fs_ids'].append(temp_fs_id)
 
     update_list = getSyncDir(sync_data, du_util)
-    logger.info("共发现{}个待更新文件/文件夹".format(len(update_list)))
+    logger.success("共发现{}个待更新文件/文件夹".format(len(update_list)))
+    logger.info(update_list)
     s = 0
     for item in update_list:
         if du_util.saveDir(sync_data['from_uk'], sync_data['msg_id'], item['save_path'], item['fs_id'],
@@ -124,7 +141,7 @@ def syncDir(sync_data, du_util: DuUtil, notices: Notices):
         else:
             notices.addFail(item)
 
-    logger.info("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], s))
+    logger.success("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], s))
     print("{0}同步完成，共更新了{1}个文件/文件夹".format(sync_data['sync_dir'], s))
 
 
@@ -138,7 +155,6 @@ def syncAllDir(du_util: DuUtil):
 
     for d in sd:
         syncDir(d, du_util, notices)
-        sleep(10)
 
     notices.send()
     notices.send_sub()
