@@ -21,7 +21,6 @@ def getSyncDir(sync_data, du_util: DuUtil):
     while len(wait_list) > 0:
         sd = wait_list.pop(0)
         logger.info("正在同步：{}".format(sd['path']))
-        print("正在同步：{}".format(sd['path']))
         try:
             # 获取群文件中的文件列表
             need_get_group_dir = True
@@ -146,15 +145,18 @@ def syncDir(sync_data, du_util: DuUtil, notices: Notices):
 
 
 def syncAllDir(du_util: DuUtil):
-    sd = getSyncData()
-    if sd == False:
-        logger.warning("读取同步文件失败，请检查/temp/sync.json是否存在")
-        print("读取同步文件失败，请检查/temp/sync.json是否存在")
-        return False
     notices = Notices()
+    try:
+        sd = getSyncData()
+        if sd == False:
+            logger.warning("读取同步文件失败，请检查/temp/sync.json是否存在")
+            print("读取同步文件失败，请检查/temp/sync.json是否存在")
+            return False
 
-    for d in sd:
-        syncDir(d, du_util, notices)
-
-    notices.send()
-    notices.send_sub()
+        for d in sd:
+            syncDir(d, du_util, notices)
+    except BaseException as e:
+        logger.error(e)
+    finally:
+        notices.send()
+        notices.send_sub()

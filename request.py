@@ -64,10 +64,10 @@ class Request:
                     return self._req_store['GET'][_url][_header_md5][_data_md5][_params_md5]
             except KeyError:
                 pass
-        logger.info("Start Get {}".format(_url))
+        # logger.debug("Start Get {}".format(_url))
         res = requests.get(url=_url, params=params, data=data,
                            headers=_header, verify=False, timeout=self._timeout)
-        logger.info("End Get {0}\tres={1}".format(_url, res))
+        # logger.debug("End Get {0}\tres={1}".format(_url, res))
         self._num += 1
         if self._enable_store:
             dic_key = ["GET", _url, _header_md5, _data_md5, _params_md5]
@@ -112,10 +112,10 @@ class Request:
                     return self._req_store['POST'][_url][_header_md5][_data_md5][_params_md5]
             except KeyError:
                 pass
-        logger.info("Start Post {}".format(_url))
+        # logger.debug("Start Post {}".format(_url))
         res = requests.post(url=_url, data=data, params=params,
                             headers=_header, verify=False, timeout=self._timeout)
-        logger.info("End Post {0}\tres={1}".format(_url, res))
+        # logger.debug("End Post {0}\tres={1}".format(_url, res))
         self._num += 1
         if self._enable_store:
             dic_key = ["POST", _url, _header_md5, _data_md5, _params_md5]

@@ -9,7 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException
-import qrcode_terminal
+# import qrcode_terminal
 from loguru import logger
 
 from util import zxingParseQRCode, getConfig
@@ -45,6 +45,9 @@ class DuUtil:
         if not self._config['showWebDriver']:
             logger.info("已配置不显示浏览器")
             driver_options.add_argument("--headless")
+            driver_options.add_argument('--no-sandbox')
+            driver_options.add_argument('--disable-gpu')
+            driver_options.add_argument('--disable-dev-shm-usage')
         self._driver = Chrome("chromedriver", chrome_options=driver_options)
         self._driver.get("https://pan.baidu.com")
         try:
@@ -104,7 +107,7 @@ class DuUtil:
         print("请扫描二维码登录，如果无法扫描请扫描程序目录下" + self._config['qrCodeImagePath'])
         print("登录成功后请按下回车键")
         # 在控制台打印二维码，同时保存图片到本地
-        qrcode_terminal.draw(zxingParseQRCode(login_qrcode_url.get_attribute("src")))
+        # qrcode_terminal.draw(zxingParseQRCode(login_qrcode_url.get_attribute("src")))
         terminal_input = None
         relogin = 1
         while terminal_input is None and relogin < 6:

@@ -1,4 +1,4 @@
-import requests as requests
+import requests
 
 from DuUtil import DuUtil
 from sync import syncAllDir
@@ -11,16 +11,18 @@ def main(dp):
     while ipt1 != '0':
         print("请选择要执行的操作：\n\t[0] 退出\n\t[1] 设置同步目录\n\t[2] 同步所有目录\n\t[3] 查看同步列表")
         ipt1 = input()
-        if ipt1 != '0':
-            if ipt1 == '1':
-                makeNewSync(dp)
-            elif ipt1 == '2':
-                syncAllDir(dp)
-            elif ipt1 == '3':
-                printSyncList()
+        try:
+            if ipt1 != '0':
+                if ipt1 == '1':
+                    makeNewSync(dp)
+                elif ipt1 == '2':
+                    syncAllDir(dp)
+                elif ipt1 == '3':
+                    printSyncList()
 
-            ipt1 = ''
-
+                ipt1 = ''
+        except AssertionError as e:
+            logger.warning(e)
 
 def shellSync():
     """
@@ -37,8 +39,11 @@ def shellSync():
     try:
         dp = DuUtil()
         syncAllDir(dp)
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
+        logger.error("网络连接错误：{}".format(e))
         print("网络连接错误")
+    except AssertionError as e:
+        logger.warning("程序中断：{}".format(e))
     finally:
         if dp:
             dp.close()

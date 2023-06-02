@@ -375,6 +375,7 @@ def getConfig():
 
     :return:
     """
+    f = None
     try:
         with open('./config.json', 'r', encoding='utf8') as f:
             return json.load(f)
