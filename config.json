@@ -1,5 +1,6 @@
 {
   "showWebDriver": false,
+  "ChromedriverPath": "chromedriver",
   "qrCodeImagePath": "./temp/login.png",
   "notice": {
     "email": {

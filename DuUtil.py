@@ -4,16 +4,17 @@ import re
 import urllib
 from time import sleep
 
+# import qrcode_terminal
+from loguru import logger
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import Chrome, ChromeOptions
+# from selenium.webdriver import Safari
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException
-# import qrcode_terminal
-from loguru import logger
 
-from util import zxingParseQRCode, getConfig
 from request import Request
+from util import getConfig
 
 
 class DuUtil:
@@ -41,6 +42,23 @@ class DuUtil:
         主要用于获取登录token和bdstoken
         :return:
         """
+        # self._bdstoken = "71bd27e587f4adee527c306035028bd4"
+        # driver_options = ChromeOptions()
+        # if not self._config['showWebDriver']:
+        #     logger.info("已配置不显示浏览器")
+        #     driver_options.add_argument("--headless")
+        #     driver_options.add_argument('--no-sandbox')
+        #     driver_options.add_argument('--disable-gpu')
+        #     driver_options.add_argument('--disable-dev-shm-usage')
+        #     driver_options.add_argument('--incognito')
+        #     driver_options.add_argument('--blink-settings=imagesEnabled=false')
+        # self._driver = Chrome(
+        #     self._config['ChromedriverPath'] if self._config['ChromedriverPath'] is not None else "chromedriver",
+        #     options=driver_options)
+        # self._driver.get("https://pan.baidu.com")
+        # with open("./temp/cookie.json", "r", encoding="utf8") as f:
+        #     self._cookie = json.load(f)
+        # return
         driver_options = ChromeOptions()
         if not self._config['showWebDriver']:
             logger.info("已配置不显示浏览器")
@@ -48,9 +66,12 @@ class DuUtil:
             driver_options.add_argument('--no-sandbox')
             driver_options.add_argument('--disable-gpu')
             driver_options.add_argument('--disable-dev-shm-usage')
-        self._driver = Chrome("chromedriver", chrome_options=driver_options)
+            driver_options.add_argument('--incognito')
+            driver_options.add_argument('--blink-settings=imagesEnabled=false')
+        self._driver = Chrome(self._config['ChromedriverPath'] if self._config['ChromedriverPath'] is not None else "chromedriver", options=driver_options)
         self._driver.get("https://pan.baidu.com")
         try:
+            f = None
             with open("./temp/cookie.json", "r", encoding="utf8") as f:
                 self._cookie = json.load(f)
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
@@ -104,6 +125,8 @@ class DuUtil:
         sleep(2)
         login_qrcode_url = self._driver.find_element(By.CLASS_NAME, "tang-pass-qrcode-img")
         logger.debug("获取登录二维码，二维码链接: {}".format(login_qrcode_url))
+        # 保存图片
+        login_qrcode_url.screenshot(self._config['qrCodeImagePath'])
         print("请扫描二维码登录，如果无法扫描请扫描程序目录下" + self._config['qrCodeImagePath'])
         print("登录成功后请按下回车键")
         # 在控制台打印二维码，同时保存图片到本地
@@ -176,6 +199,45 @@ class DuUtil:
         except KeyError:
             logger.debug(res)
             return []
+
+    def removeFile(self, path: list):
+        """
+        移除指定目录下的文件/文件夹
+        删除需要时间，最长可能需要10s
+
+        :param path: 包括文件夹和文件，每一项都是文件夹或者文件的路径，如：['/test/1.txt', '/test/2.txt', '/test/3.txt']
+        :return: True/False
+        """
+        res = self._request.post(url="/api/filemanager", params={
+            "async": 2,
+            "onnest": 'fail',
+            "web": 1,
+            "app_id": 250528,
+            "opera": 'delete',
+            "newVerify": 1,
+            "clienttype": 0,
+            "bdstoken": self._bdstoken,
+        },data={
+            "filelist": json.dumps(path)
+        })
+        res = json.loads(res)
+
+        if res['errno'] == 0:
+            verifyRes = None
+            retry = 0
+            while verifyRes is None or verifyRes['status'] not in ['success', 'failed'] or retry < 10:
+                verifyRes = self._request.get(url="/share/taskquery", params={
+                    "taskid": res['taskid'],
+                    "web": 1,
+                    "app_id": 250528,
+                    "clienttype": 0,
+                })
+                retry += 1
+                sleep(1)
+            return verifyRes['status'] == 'success'
+        else:
+            logger.warning("删除文件失败：{}".format(res))
+            return False
 
     def getGroupList(self, page=0, num=20):
         """

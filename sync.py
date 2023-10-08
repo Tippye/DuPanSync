@@ -1,7 +1,3 @@
-from time import sleep
-
-import requests.exceptions
-import urllib3
 from loguru import logger
 
 from DuUtil import DuUtil
@@ -33,7 +29,10 @@ def getSyncDir(sync_data, du_util: DuUtil):
                     page += 1
                 else:
                     need_get_group_dir = False
-
+            if len(group_dir_list) == 0:
+                logger.warning("获取群文件列表失败")
+                print("获取群文件列表失败")
+                return []
             # 获取自己网盘中的文件列表
             need_get_file_list = True
             file_list = []
@@ -45,7 +44,7 @@ def getSyncDir(sync_data, du_util: DuUtil):
                 else:
                     need_get_file_list = False
 
-            # 查找网盘哪没有的文件
+            # 查找网盘里没有的文件
             for i in range(0, len(group_dir_list)):
                 existed = False
                 for j in range(0, len(file_list)):
@@ -73,6 +72,13 @@ def getSyncDir(sync_data, du_util: DuUtil):
                             "path": "{0}/{1}".format(sd['path'], group_dir_list[i]['server_filename']),
                             "sync_dir": group_dir_list[i]['path']
                         })
+            if len(file_list)>0:
+                delete_list = ["{0}/{1}".format(sd['path'], fl['server_filename']) for fl in file_list]
+                if du_util.removeFile(delete_list):
+                    file_list = []
+                else:
+                    print("待删除列表：")
+                    print(file_list)
         except BaseException as e:
             logger.error("{}同步出现错误".format(sd['sync_dir']))
             logger.error(e)

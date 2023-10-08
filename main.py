@@ -1,4 +1,5 @@
 import requests
+import selenium.common.exceptions
 
 from DuUtil import DuUtil
 from sync import syncAllDir
@@ -21,6 +22,8 @@ def main(dp):
                     printSyncList()
 
                 ipt1 = ''
+            else:
+                dp.close()
         except AssertionError as e:
             logger.warning(e)
 
@@ -44,6 +47,10 @@ def shellSync():
         print("网络连接错误")
     except AssertionError as e:
         logger.warning("程序中断：{}".format(e))
+    except selenium.common.exceptions.SessionNotCreatedException as e:
+        if e.msg.find("This version of ChromeDriver only supports Chrome version"):
+            logger.error("ChromeDriver版本错误，请检查ChromeDriver版本是否正确")
+            print("ChromeDriver版本错误，请检查ChromeDriver版本是否正确")
     finally:
         if dp:
             dp.close()
@@ -63,6 +70,10 @@ if __name__ == '__main__':
         print("网络连接错误")
     except AssertionError as e:
         logger.warning("程序中断：{}".format(e))
+    except selenium.common.exceptions.SessionNotCreatedException as e:
+        if e.msg.find("This version of ChromeDriver only supports Chrome version"):
+            logger.error("ChromeDriver版本错误，请检查ChromeDriver版本是否正确")
+            print("ChromeDriver版本错误，请检查ChromeDriver版本是否正确")
     finally:
         if dupan:
             dupan.close()
