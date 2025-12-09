@@ -70,12 +70,14 @@ class DuUtil:
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--incognito')
             driver_options.add_argument('--blink-settings=imagesEnabled=false')
-        # 添加SSL/证书相关选项，解决新版Chrome的兼容性问题
+        # 添加SSL/证书相关选项，解决Chrome 143+版本的SSL握手失败问题
+        # 这些选项是必需的，因为新版Chrome对SSL有更严格的要求
         driver_options.add_argument('--ignore-certificate-errors')
         driver_options.add_argument('--ignore-ssl-errors=yes')
         driver_options.add_argument('--allow-running-insecure-content')
         
         # 使用webdriver-manager自动管理ChromeDriver版本
+        # webdriver-manager会自动缓存已下载的驱动，避免重复下载
         chrome_path = self._config.get('ChromedriverPath')
         if chrome_path:
             service = Service(executable_path=chrome_path)
