@@ -3,3 +3,5 @@ logs/*
 temp
 venv
 chromedriver
+__pycache__
+*.pyc

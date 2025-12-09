@@ -8,10 +8,12 @@ from time import sleep
 from loguru import logger
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import Chrome, ChromeOptions
+from selenium.webdriver.chrome.service import Service
 # from selenium.webdriver import Safari
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
 
 from request import Request
 from util import getConfig
@@ -68,7 +70,21 @@ class DuUtil:
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--incognito')
             driver_options.add_argument('--blink-settings=imagesEnabled=false')
-        self._driver = Chrome(self._config['ChromedriverPath'] if self._config['ChromedriverPath'] is not None else "chromedriver", options=driver_options)
+        # 添加SSL/证书相关选项，解决Chrome 143+版本的SSL握手失败问题
+        # 这些选项是必需的，因为新版Chrome对SSL有更严格的要求
+        driver_options.add_argument('--ignore-certificate-errors')
+        driver_options.add_argument('--ignore-ssl-errors=yes')
+        driver_options.add_argument('--allow-running-insecure-content')
+        
+        # 使用webdriver-manager自动管理ChromeDriver版本
+        # webdriver-manager会自动缓存已下载的驱动，避免重复下载
+        chrome_path = self._config.get('ChromedriverPath')
+        if chrome_path:
+            service = Service(executable_path=chrome_path)
+        else:
+            service = Service(ChromeDriverManager().install())
+        
+        self._driver = Chrome(service=service, options=driver_options)
         self._driver.get("https://pan.baidu.com")
         try:
             f = None
